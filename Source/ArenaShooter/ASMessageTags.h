@@ -1,0 +1,10 @@
+#pragma once
+#include "NativeGameplayTags.h"
+
+namespace FASMessageTags
+{
+	ARENASHOOTER_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Match_Ended);
+	ARENASHOOTER_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_SlotChanged);
+	ARENASHOOTER_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_ActiveSlotChanged);
+	ARENASHOOTER_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage_Dealt);
+}

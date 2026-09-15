@@ -1,0 +1,93 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.8",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "ArenaShooter",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"GameplayAbilities",
+				"UMG",
+				"EnhancedInput",
+				"ModelViewViewModel",
+				"GameSettings",
+				"CommonUI",
+				"DeveloperSettings",
+				"CoreUObject"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "AnimationWarping",
+			"Enabled": true
+		},
+		{
+			"Name": "AnimationLocomotionLibrary",
+			"Enabled": true
+		},
+		{
+			"Name": "MotionWarping",
+			"Enabled": true
+		},
+		{
+			"Name": "N10XSourceCodeAccess",
+			"Enabled": false
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
+		{
+			"Name": "SkeletalMeshModelingTools",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayInsights",
+			"Enabled": true
+		},
+		{
+			"Name": "ModelViewViewModel",
+			"Enabled": true
+		},
+		{
+			"Name": "CommonUI",
+			"Enabled": true
+		},
+		{
+			"Name": "NiagaraFluids",
+			"Enabled": true
+		},
+		{
+			"Name": "AudioModulation",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayMessageRouter",
+			"Enabled": true
+		},
+		{
+			"Name": "SocketSubsystemSteamIP",
+			"Enabled": true
+		},
+		{
+			"Name": "SteamSockets",
+			"Enabled": true
+		},
+		{ 
+			"Name": "CommonLoadingScreen", 
+			"Enabled": true
+		}
+	]
+}
