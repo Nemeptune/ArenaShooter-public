@@ -3,7 +3,7 @@
 
 #include "UI/Binders/ASVitalsBinder.h"
 
-#include "AbilitySystem/ASCombatAttributeSet.h"
+#include "AbilitySystem/Attributes/ASCombatAttributeSet.h"
 #include "UI/ViewModels/ASVitalsViewModel.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
 

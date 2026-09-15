@@ -4,7 +4,7 @@ A fast, first-person multiplayer arena shooter built in **Unreal Engine 5.8** wi
 
 The project is mostly about **netcode that feels right on a real connection**. The client predicts weapon swaps, shots, ammo and projectiles so there's no visible input delay, and the server stays authoritative over damage, deaths and match results.
 
-> This repository contains the C++ source, config and plugins. Art, audio, animation and map content are not included (see [What's not in this repo](#whats-not-in-this-repo)).
+> This repository contains the C++ source, config, plugins and all Blueprint / logic content (abilities, effects, anim blueprints, UI, materials, Niagara systems, MetaSounds, data assets, maps). Third-party art (textures, meshes, animations, sound waves) is not included. See [What's in this repo](#whats-in-this-repo).
 
 ---
 
@@ -36,7 +36,6 @@ A weapon swap is instant on the owning client and still converges to the server:
 - **Replicated state:** the inventory replicates one `FASActiveSlotState { SlotIndex, Seq }`. The owner keeps a local `PredictedSlot` and `LocalSeq`.
 - **Request:** `RequestSwitch` bumps the sequence, applies the swap locally right away and sends `ServerSetActiveSlot(Slot, Seq)`.
 - **Reconciliation:** the owner only accepts a replicated slot whose `Seq` matches its latest request, so stale acks from fast key presses never snap the weapon back. Simulated proxies simply follow the replicated index.
-- **Why not a handshake:** GAS prediction keys predict effects, tags and montages. They can't reconcile a replicated *selection variable*, so the sequence number is the right tool.
 - **Ordering:** swap and fire RPCs go through the same actor channel. Reliable ordering then guarantees the server processes the swap before a shot fired right after it.
 - **Ability grants:** abilities are granted when a weapon is acquired, not when it's equipped. The activation gate asks the weapon instance whether it's active: predicted on the owner, replicated elsewhere. No spec replication round trip per swap.
 
@@ -124,16 +123,43 @@ A weapon swap is instant on the owning client and still converges to the server:
 3. Right-click `ArenaShooter.uproject` → **Generate Visual Studio project files**.
 4. Open `ArenaShooter.sln` and build **ArenaShooterEditor / Development Editor**.
 
-The code compiles as is. Content isn't included, so maps and Blueprints referenced from `Config/` won't load. Gameplay videos and a packaged build are the way to see it running.
+The project compiles and opens in the editor with every Blueprint, ability, widget, material and Niagara graph readable. Art isn't included, so the Output Log lists missing-asset warnings, and in-game the level is greybox, characters and weapons are invisible and sounds are silent. Gameplay videos and a packaged build are the way to see it running.
+
+> Don't resave content in a fresh clone. Saving an asset permanently clears its references to the missing art.
+
+### Source layout
+```
+Source/ArenaShooter/
+  AbilitySystem/   ASC, globals, effect context, ability sets
+    Abilities/       weapon, beam, projectile, buff and death abilities
+    AbilityTasks/    predicted projectile spawn, montage-for-mesh
+    Attributes/      health / shield / combat attributes
+    Executions/      damage execution
+    GameplayCues/    weapon fire, beam and buff aura cue actors
+  Character/       character, movement component (knockback), anim instance
+  Inventory/       inventory (predicted slot switching), equipment, inventory messages
+  Weapon/          weapon definition, instance, cosmetic actor, projectile
+  Pickups/         pickup base, effect / ammo / buff pickups
+  GameModes/       game mode, duel mode, game state
+  Player/          player controller, player state, local player
+  Physics/         physical material, knockback statics
+  FX/              impact reporting (Niagara Data Channels), footsteps
+  Messages/        gameplay message bus tags and payloads
+  UI/              layer manager, HUD controller, binders, view models
+  Settings/        game settings registry, user and audio settings
+  Online/          Steam avatars
+  Input/           input config and component
+  System/          native gameplay tags, log channels, preload subsystem
+```
 
 ### Testing multiplayer
 - **LAN (one machine):** set `DefaultPlatformService=Null` in `Config/DefaultEngine.ini` and start two standalone instances (`UnrealEditor.exe ArenaShooter.uproject -game -windowed`). Host from one, join from the other.
 - **Steam (two machines):** set `DefaultPlatformService=Steam`, package, and run on two PCs with different Steam accounts. Uses the Spacewar test AppId (480).
 
-## What's not in this repo
-- **Content** (meshes, animations, textures, materials, Niagara systems, audio, maps). Much of it comes from Epic / Fab sample and marketplace packs whose licenses don't allow public redistribution.
+## What's in this repo
+- **Included:** every content asset the game actually uses that isn't raw art: Blueprints, gameplay abilities and effects, anim blueprints and linked layers, skeletons and physics assets, widgets, materials and material functions, Niagara systems / emitters / modules and the impact data channel, MetaSounds and the audio mix / submix setup, input actions, weapon / buff / UI data assets, and both maps.
+- **Not included: art.** Textures, static and skeletal meshes, animation sequences, montages and sound waves. Much of it comes from Epic / Fab sample and marketplace packs whose licenses don't allow public redistribution.
 - **Engine plugin fork.** The shipped build uses a locally patched copy of `OnlineSubsystemSteam` (one change: Steam lobby search uses the worldwide distance filter). It isn't included because it's engine code, and the stock engine plugin works for same-region testing.
 
 ## Credits
-- Montage-for-mesh ability task and ASC montage replication adapted from [GASShooter](https://github.com/tranek/GASShooter) by Dan Kestranek (MIT).
 - Lyra-derived plugins as listed under *Built with*.

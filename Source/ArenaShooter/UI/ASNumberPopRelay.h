@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "Feedback/ASDamageMessage.h"
+#include "Messages/ASDamageMessage.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "ASNumberPopRelay.generated.h"

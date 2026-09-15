@@ -3,13 +3,13 @@
 
 #include "UI/Binders/ASHotbarBinder.h"
 
-#include "ASCharacter.h"
-#include "ASMessageTags.h"
-#include "Components/ASInventoryComponent.h"
+#include "Character/ASCharacter.h"
+#include "Messages/ASMessageTags.h"
+#include "Inventory/ASInventoryComponent.h"
 #include "UI/ASHUDWidget.h"
 #include "Player/ASPlayerController.h"
 #include "UI/ViewModels/ASWeaponSlotViewModel.h"
-#include "Components/ASInventoryMessages.h"
+#include "Inventory/ASInventoryMessages.h"
 #include "Weapon/ASWeaponDefinition.h"
 
 void UASHotbarBinder::Init(AASPlayerController* PC, UASHUDWidget* InHUDWidget)

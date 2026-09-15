@@ -3,11 +3,11 @@
 
 #include "Weapon/ASProjectile.h"
 
-#include "ASGameplayTags.h"
-#include "ASLogChannels.h"
+#include "System/ASGameplayTags.h"
+#include "System/ASLogChannels.h"
 #include "Player/ASPlayerController.h"
 #include "GameplayEffect.h"
-#include "KnockbackStatics.h"
+#include "Physics/KnockbackStatics.h"
 #include "NiagaraComponent.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
 #include "AbilitySystem/ASAbilitySystemGlobals.h"
@@ -22,7 +22,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"
-#include "Settings/UGASDeveloperSettings.h"
+#include "Settings/GASDeveloperSettings.h"
 
 AASProjectile::AASProjectile(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

@@ -3,7 +3,7 @@
 
 #include "ASAvatarSubsystem.h"
 
-#include "ASLogChannels.h"
+#include "System/ASLogChannels.h"
 #include "Async/Async.h"
 #include "Engine/Texture2D.h"
 #include "GameFramework/OnlineReplStructs.h"

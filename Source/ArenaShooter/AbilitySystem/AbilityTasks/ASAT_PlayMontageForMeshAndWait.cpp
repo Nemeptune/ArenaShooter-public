@@ -5,7 +5,7 @@
 
 #include "AbilitySystem/ASAbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
-#include "ASLogChannels.h"
+#include "System/ASLogChannels.h"
 #include "GameFramework/Character.h"
 
 UASAT_PlayMontageForMeshAndWait::UASAT_PlayMontageForMeshAndWait(const FObjectInitializer& ObjectInitializer)

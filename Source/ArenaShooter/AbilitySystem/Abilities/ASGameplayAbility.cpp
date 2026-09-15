@@ -3,12 +3,12 @@
 
 #include "ASGameplayAbility.h"
 
-#include "ASCharacter.h"
-#include "ASGameplayTags.h"
-#include "ASLogChannels.h"
+#include "Character/ASCharacter.h"
+#include "System/ASGameplayTags.h"
+#include "System/ASLogChannels.h"
 #include "Player/ASPlayerController.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
-#include "Components/ASInventoryComponent.h"
+#include "Inventory/ASInventoryComponent.h"
 #include "GameFramework/PlayerState.h"
 #include "Weapon/ASWeaponInstance.h"
 

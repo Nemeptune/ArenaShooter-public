@@ -3,8 +3,8 @@
 
 #include "UI/Binders/ASScoreBinder.h"
 
-#include "ASGameState.h"
-#include "ASLogChannels.h"
+#include "GameModes/ASGameState.h"
+#include "System/ASLogChannels.h"
 #include "Online/ASAvatarSubsystem.h"
 #include "Player/ASPlayerState.h"
 #include "UI/ASUISettings.h"

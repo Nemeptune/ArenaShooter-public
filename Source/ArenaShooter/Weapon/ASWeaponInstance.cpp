@@ -3,12 +3,12 @@
 
 #include "Weapon/ASWeaponInstance.h"
 
-#include "ASGameplayTags.h"
-#include "ASLogChannels.h"
+#include "System/ASGameplayTags.h"
+#include "System/ASLogChannels.h"
 #include "ASWeaponCosmetic.h"
 #include "ASWeaponDefinition.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
-#include "Components/ASInventoryComponent.h"
+#include "Inventory/ASInventoryComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/PlayerState.h"
 #include "Iris/ReplicationSystem/ReplicationFragmentUtil.h"

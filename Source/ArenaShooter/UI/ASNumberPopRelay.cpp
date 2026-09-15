@@ -3,9 +3,9 @@
 
 #include "ASNumberPopRelay.h"
 
-#include "ASGameplayTags.h"
-#include "ASLogChannels.h"
-#include "ASMessageTags.h"
+#include "System/ASGameplayTags.h"
+#include "System/ASLogChannels.h"
+#include "Messages/ASMessageTags.h"
 #include "GameFramework/PlayerState.h"
 #include "Player/ASPlayerController.h"
 

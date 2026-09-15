@@ -3,9 +3,9 @@
 
 #include "ASGameplayAbility_Death.h"
 
-#include "ASCharacter.h"
-#include "ASGameplayTags.h"
-#include "ASGameMode_Deathmatch.h"
+#include "Character/ASCharacter.h"
+#include "System/ASGameplayTags.h"
+#include "GameModes/ASGameMode_Deathmatch.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 

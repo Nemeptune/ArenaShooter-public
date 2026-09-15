@@ -3,10 +3,10 @@
 
 #include "UI/ASGameHUDController.h"
 
-#include "ASGameState.h"
+#include "GameModes/ASGameState.h"
 #include "Binders/ASHotbarBinder.h"
 #include "ASHUDWidget.h"
-#include "ASLogChannels.h"
+#include "System/ASLogChannels.h"
 #include "Player/ASPlayerState.h"
 #include "ASResultWidget.h"
 #include "Binders/ASScoreBinder.h"
@@ -20,8 +20,8 @@
 #include "AbilitySystem/ASAbilitySystemComponent.h"
 #include "View/MVVMView.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
-#include "ASMessageTags.h"
-#include "ASUIMessages.h"
+#include "Messages/ASMessageTags.h"
+#include "Messages/ASUIMessages.h"
 #include "Player/ASLocalPlayer.h"
 #include "Player/ASPlayerController.h"
 

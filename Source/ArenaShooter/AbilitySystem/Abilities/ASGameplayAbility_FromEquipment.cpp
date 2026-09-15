@@ -5,9 +5,9 @@
 
 #include "AbilitySystemComponent.h"
 #include "ArenaShooter.h"
-#include "ASGameplayTags.h"
-#include "ASLogChannels.h"
-#include "ASPhysicalMaterial.h"
+#include "System/ASGameplayTags.h"
+#include "System/ASLogChannels.h"
+#include "Physics/ASPhysicalMaterial.h"
 #include "AbilitySystem/ASGameplayEffectContext.h"
 #include "Weapon/ASWeaponInstance.h"
 

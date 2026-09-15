@@ -4,7 +4,7 @@
 #include "UI/ASUILayerManager.h"
 
 #include "Player/ASLocalPlayer.h"
-#include "ASLogChannels.h"
+#include "System/ASLogChannels.h"
 #include "ASRootLayout.h"
 #include "ASUIConfig.h"
 #include "ASUISettings.h"

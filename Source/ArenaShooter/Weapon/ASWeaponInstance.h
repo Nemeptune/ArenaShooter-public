@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AbilitySet.h"
+#include "AbilitySystem/AbilitySet.h"
 #include "GameplayTagContainer.h"
 #include "UObject/Object.h"
 #include "ASWeaponInstance.generated.h"

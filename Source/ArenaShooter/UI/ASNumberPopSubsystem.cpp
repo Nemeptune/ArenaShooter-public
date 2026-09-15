@@ -3,11 +3,11 @@
 
 #include "ASNumberPopSubsystem.h"
 
-#include "ASGameplayTags.h"
+#include "System/ASGameplayTags.h"
 #include "ASUISettings.h"
 #include "NiagaraComponent.h"
 #include "NiagaraDataInterfaceArrayFunctionLibrary.h"
-#include "Feedback/ASDamageMessage.h"
+#include "Messages/ASDamageMessage.h"
 
 void UASNumberPopSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {

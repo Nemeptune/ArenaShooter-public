@@ -5,7 +5,7 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "ASGameplayTags.h"
+#include "System/ASGameplayTags.h"
 #include "GameplayTagContainer.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"

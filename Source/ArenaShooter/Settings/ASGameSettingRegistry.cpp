@@ -5,12 +5,12 @@
 
 #include "ASGameUserSettings.h"
 #include "Player/ASLocalPlayer.h"
-#include "FASWhenCondition.h"
+#include "ASWhenCondition.h"
 #include "GameSettingCollection.h"
 #include "GameSettingValueDiscreteDynamic.h"
 #include "GameSettingValueScalarDynamic.h"
-#include "UASSettingValueDiscrete_OverallQuality.h"
-#include "UASSettingValueDiscrete_Resolution.h"
+#include "ASSettingValueDiscrete_OverallQuality.h"
+#include "ASSettingValueDiscrete_Resolution.h"
 #include "DataSource/GameSettingDataSourceDynamic.h"
 
 #define GET_LOCAL_SETTINGS_FUNCTION_PATH(FunctionOrPropertyName)						\

@@ -5,7 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "ASBuffDefinition.h"
-#include "ASGameplayTags.h"
+#include "System/ASGameplayTags.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "GameFramework/RotatingMovementComponent.h"

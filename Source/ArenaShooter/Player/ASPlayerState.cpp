@@ -3,8 +3,8 @@
 
 #include "ASPlayerState.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
-#include "AbilitySystem/ASCombatAttributeSet.h"
-#include "Components/ASInventoryComponent.h"
+#include "AbilitySystem/Attributes/ASCombatAttributeSet.h"
+#include "Inventory/ASInventoryComponent.h"
 #include "Net/UnrealNetwork.h"
 
 AASPlayerState::AASPlayerState()

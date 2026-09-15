@@ -4,7 +4,7 @@
 #include "ASAT_SpawnPredictedProjectile.h"
 
 #include "AbilitySystemComponent.h"
-#include "ASLogChannels.h"
+#include "System/ASLogChannels.h"
 #include "Player/ASPlayerController.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
 #include "GameFramework/PlayerState.h"
