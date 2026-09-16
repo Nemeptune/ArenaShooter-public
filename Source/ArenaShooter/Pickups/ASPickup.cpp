@@ -67,6 +67,16 @@ bool AASPickup::CanGiveTo(UAbilitySystemComponent* ASC)
 	return !ASC->HasAnyMatchingGameplayTags(DeathTags);
 }
 
+void AASPickup::ResetToActive()
+{
+	GetWorldTimerManager().ClearTimer(RespawnTimer);
+	if (!bIsActive)
+	{
+		bIsActive = true;
+		ApplyActiveState();
+	}
+}
+
 void AASPickup::TryPickup(AActor* Actor)
 {
 	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Actor);

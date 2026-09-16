@@ -43,6 +43,7 @@ public:
 
 	int32 GetKills() const;
 	int32 GetDeaths() const;
+	void ResetScore();
 
 	UPROPERTY(BlueprintAssignable, Category="ASPlayerState|Score")
 	FOnKillsChanged OnKillsChanged;

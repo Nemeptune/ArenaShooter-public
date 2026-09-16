@@ -13,6 +13,7 @@
 #include "TimerManager.h"
 #include "GameFramework/Pawn.h"
 #include "EngineUtils.h"
+#include "Pickups/ASPickup.h"
 
 AASGameMode_Deathmatch::AASGameMode_Deathmatch()
 {
@@ -65,6 +66,7 @@ void AASGameMode_Deathmatch::HandleMatchIsWaitingToStart()
 
 void AASGameMode_Deathmatch::HandleMatchHasStarted()
 {
+	ResetForMatchStart();
 	Super::HandleMatchHasStarted();
 
 	if (AASGameState* GS = GetGameState<AASGameState>())
@@ -118,6 +120,25 @@ void AASGameMode_Deathmatch::HandleMatchHasEnded()
 	GS->SetMatchResult(bTie ? nullptr : Winner);
 }
 
+void AASGameMode_Deathmatch::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
+{
+	if (!HasMatchStarted())
+	{
+		AGameModeBase::HandleStartingNewPlayer_Implementation(NewPlayer);
+		return;
+	}
+	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
+}
+
+bool AASGameMode_Deathmatch::PlayerCanRestart_Implementation(APlayerController* Player)
+{
+	if (!HasMatchStarted())
+	{
+		return AGameModeBase::PlayerCanRestart_Implementation(Player);
+	}
+	return Super::PlayerCanRestart_Implementation(Player);
+}
+
 void AASGameMode_Deathmatch::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
@@ -140,21 +161,24 @@ void AASGameMode_Deathmatch::OnPlayerKilled(AActor* Killer, AActor* Victim)
 	AASCharacter* VictimChar = Cast<AASCharacter>(Victim);
 	if (!VictimChar) return;
 
-	// Credit the kill to the killer (guard against suicide / world damage)
-	if (Killer && Killer != Victim)
+	if (IsMatchInProgress())
 	{
-		if (APawn* KillerPawn = Cast<APawn>(Killer))
+		// Credit the kill to the killer (guard against suicide / world damage)
+		if (Killer && Killer != Victim)
 		{
-			if (AASPlayerState* KillerPS = KillerPawn->GetPlayerState<AASPlayerState>())
+			if (APawn* KillerPawn = Cast<APawn>(Killer))
 			{
-				KillerPS->AddKill();
+				if (AASPlayerState* KillerPS = KillerPawn->GetPlayerState<AASPlayerState>())
+				{
+					KillerPS->AddKill();
+				}
 			}
 		}
-	}
 	
-	if (AASPlayerState* VictimPS = VictimChar->GetPlayerState<AASPlayerState>())
-	{
-		VictimPS->AddDeath();
+		if (AASPlayerState* VictimPS = VictimChar->GetPlayerState<AASPlayerState>())
+		{
+			VictimPS->AddDeath();
+		}
 	}
 
 	AController* VictimController = VictimChar->GetController();
@@ -234,4 +258,43 @@ void AASGameMode_Deathmatch::Logout(AController* Exiting)
 	}
 
 	Super::Logout(Exiting);
+}
+
+void AASGameMode_Deathmatch::ResetForMatchStart()
+{
+	for (TPair<AController*, FTimerHandle>& Pair : RespawnTimers)
+	{
+		GetWorldTimerManager().ClearTimer(Pair.Value);
+	}
+	RespawnTimers.Empty();
+
+	for (TActorIterator<AASPickup> It(GetWorld()); It; ++It)
+	{
+		It->ResetToActive();
+	}
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC)
+		{
+			continue;
+		}
+
+		if (AASPlayerState* PS = PC->GetPlayerState<AASPlayerState>())
+		{
+			PS->ResetScore();
+			if (UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent())
+			{
+				ASC->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(FASGameplayTags::Buff));
+			}
+		}
+		
+		if (AASCharacter* Character = PC->GetPawn<AASCharacter>())
+		{
+			Character->ReleaseLoadout();
+		}
+
+		RespawnPlayer(PC);
+	}
 }

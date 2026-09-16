@@ -68,6 +68,15 @@ int32 AASPlayerState::GetDeaths() const
 	return Deaths;
 }
 
+void AASPlayerState::ResetScore()
+{
+	Kills = 0;
+	Deaths = 0;
+	OnKillsChanged.Broadcast(Kills);
+	OnDeathsChanged.Broadcast(Deaths);
+	ForceNetUpdate();
+}
+
 void AASPlayerState::OnRep_Kills()
 {
 	OnKillsChanged.Broadcast(Kills);

@@ -8,6 +8,7 @@
 
 #define NULL_PROJECTILE_ID 0
 
+class UInputMappingContext;
 struct FASNumberPop;
 class AASProjectile;
 class UInputAction;
@@ -62,6 +63,10 @@ public:
 	
 	UFUNCTION(Client, Unreliable)
 	void ClientNumberPops(const TArray<FASNumberPop>& Pops);
+	
+	// Pawn-independent keys (game menu). Added once by the controller, never cleared by pawns.
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	TObjectPtr<UInputMappingContext> GlobalMappingContext;
 	
 protected:
 	UPROPERTY()

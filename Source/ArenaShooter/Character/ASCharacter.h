@@ -79,6 +79,7 @@ public:
 	float GetMaxShield() const;
 
 	void RemoveCharacterAbilities(); // Server
+	void ReleaseLoadout();
 
 protected:
 

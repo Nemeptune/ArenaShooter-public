@@ -20,8 +20,12 @@ public:
 	virtual void HandleMatchIsWaitingToStart() override;
 	virtual void HandleMatchHasStarted() override;
 	virtual void HandleMatchHasEnded() override;
+	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
+	virtual bool PlayerCanRestart_Implementation(APlayerController* Player) override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
+	
+	void ResetForMatchStart();
 
 	void OnPlayerKilled(AActor* Killer, AActor* Victim);
 

@@ -18,6 +18,7 @@ class ARENASHOOTER_API AASPickup : public AActor
 public:	
 	AASPickup();
 
+	void ResetToActive();
 protected:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -27,7 +28,7 @@ protected:
 
 	// === Per-pickup policy (server only) ===
 	virtual bool CanGiveTo(UAbilitySystemComponent* ASC);
-	virtual bool GiveTo(AActor* Actor, UAbilitySystemComponent* ASC) PURE_VIRTUAL(AASPickup::GiveTo, return false;);
+	virtual bool GiveTo(AActor* Actor, UAbilitySystemComponent* ASC) PURE_VIRTUAL(AASPickup::GiveTo, return false;)
 
 	void TryPickup(AActor* Actor);
 	void Deactivate();

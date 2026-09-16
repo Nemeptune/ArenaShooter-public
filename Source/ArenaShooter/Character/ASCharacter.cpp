@@ -180,8 +180,6 @@ void AASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 	UEnhancedInputLocalPlayerSubsystem* Subsystem = LP->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
 
-	Subsystem->ClearAllMappings();
-
 	Subsystem->AddMappingContext(DefaultMappingContext, 0);
 	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
@@ -290,6 +288,15 @@ void AASCharacter::RemoveCharacterAbilities()
 	}
 
 	AbilitySystemComponent->bCharacterAbilitiesGiven = false;
+}
+
+void AASCharacter::ReleaseLoadout()
+{
+	if (UASInventoryComponent* InventoryComponent = UASInventoryComponent::FindInventoryComponent(GetPlayerState()))
+	{
+		InventoryComponent->RemoveAll();
+	}
+	RemoveCharacterAbilities();
 }
 
 void AASCharacter::AddCharacterAbilities()

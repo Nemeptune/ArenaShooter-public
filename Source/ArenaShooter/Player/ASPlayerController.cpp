@@ -1,5 +1,6 @@
 #include "ASPlayerController.h"
 #include "ASPlayerState.h"
+#include "EnhancedInputSubsystems.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
 #include "Input/ASInputComponent.h"
 #include "UI/ASGameHUDController.h"
@@ -24,6 +25,14 @@ void AASPlayerController::SetupInputComponent()
 	Super::SetupInputComponent();
 	
 	if (!IsLocalController()) return;
+	
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		if (GlobalMappingContext)
+		{
+			Subsystem->AddMappingContext(GlobalMappingContext, 1);
+		}
+	}
 	
 	if (UASInputComponent* IC = Cast<UASInputComponent>(InputComponent))
 	{
