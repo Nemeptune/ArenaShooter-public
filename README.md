@@ -4,6 +4,8 @@ A fast, first-person multiplayer arena shooter built in **Unreal Engine 5.8** wi
 
 The project is mostly about **netcode that feels right on a real connection**. The client predicts weapon swaps, shots, ammo and projectiles so there's no visible input delay, and the server stays authoritative over damage, deaths and match results.
 
+Clickable image with link to youtube video.
+
 [![ArenaShooter gameplay video](https://img.youtube.com/vi/I6yaiGGQ12A/maxresdefault.jpg)](https://www.youtube.com/watch?v=I6yaiGGQ12A)
 
 > This repository contains the C++ source, config, plugins and all Blueprint / logic content (abilities, effects, anim blueprints, UI, materials, Niagara systems, MetaSounds, data assets, maps). Third-party art (textures, meshes, animations, sound waves) is not included. See [What's in this repo](#whats-in-this-repo).
