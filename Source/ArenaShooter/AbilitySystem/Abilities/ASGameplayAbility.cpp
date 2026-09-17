@@ -5,12 +5,8 @@
 
 #include "Character/ASCharacter.h"
 #include "System/ASGameplayTags.h"
-#include "System/ASLogChannels.h"
 #include "Player/ASPlayerController.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
-#include "Inventory/ASInventoryComponent.h"
-#include "GameFramework/PlayerState.h"
-#include "Weapon/ASWeaponInstance.h"
 
 UASGameplayAbility::UASGameplayAbility()
 {
@@ -63,12 +59,6 @@ AController* UASGameplayAbility::GetControllerFromActorInfo() const
 AASCharacter* UASGameplayAbility::GetASCharacterFromActorInfo() const
 {
 	return (CurrentActorInfo ? Cast<AASCharacter>(CurrentActorInfo->AvatarActor.Get()) : nullptr);
-}
-
-UASInventoryComponent* UASGameplayAbility::GetInventoryFromActorInfo() const
-{
-	const APlayerState* PS = CurrentActorInfo ? Cast<APlayerState>(CurrentActorInfo->OwnerActor.Get()) : nullptr;
-	return UASInventoryComponent::FindInventoryComponent(PS);
 }
 
 void UASGameplayAbility::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)

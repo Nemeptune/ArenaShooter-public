@@ -21,7 +21,7 @@ class ARENASHOOTER_API UASEquipmentComponent : public UActorComponent
 public:
 	UASEquipmentComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 	
-	void BindToInventory();
+	void InitializeWithAbilitySystem(UAbilitySystemComponent* AbilitySystem);
 
 	UFUNCTION(BlueprintPure, Category = "ArenaShooter|Equipment")
 	UASWeaponInstance* GetEquippedWeapon() const { return EquippedWeapon; }

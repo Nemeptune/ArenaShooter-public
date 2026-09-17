@@ -28,7 +28,7 @@ protected:
 	void ApplyFXParameters(UNiagaraComponent* Component) const;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	virtual bool GiveTo(AActor* Actor, UAbilitySystemComponent* ASC) override;
+	virtual bool GiveTo(UAbilitySystemComponent* ASC) override;
 
 	const UASBuffDefinition* GetActiveBuff() const;
 	void PickNewBuff();

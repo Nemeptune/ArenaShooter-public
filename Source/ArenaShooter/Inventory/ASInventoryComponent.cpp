@@ -3,11 +3,11 @@
 
 #include "Inventory/ASInventoryComponent.h"
 
+#include "AbilitySystemComponent.h"
 #include "System/ASLogChannels.h"
 #include "Messages/ASMessageTags.h"
 #include "Engine/ActorChannel.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
-#include "GameFramework/PlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "Inventory/ASInventoryMessages.h"
 #include "Weapon/ASWeaponDefinition.h"
@@ -22,9 +22,10 @@ UASInventoryComponent::UASInventoryComponent(const FObjectInitializer& ObjectIni
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-UASInventoryComponent* UASInventoryComponent::FindInventoryComponent(const APlayerState* PlayerState)
+UASInventoryComponent* UASInventoryComponent::FindInventoryComponent(const UAbilitySystemComponent* AbilitySystem)
 {
-	return PlayerState ? PlayerState->FindComponentByClass<UASInventoryComponent>() : nullptr;
+	const AActor* Owner = AbilitySystem ? AbilitySystem->GetOwner() : nullptr;
+	return Owner ? Owner->FindComponentByClass<UASInventoryComponent>() : nullptr;
 }
 
 void UASInventoryComponent::InitializeComponent()
@@ -88,20 +89,6 @@ void UASInventoryComponent::RemoveInstanceFromReplication(UASWeaponInstance* Ins
 bool UASInventoryComponent::CanBroadcast() const
 {
 	return !bTearingDown && GetWorld() != nullptr && IsLocallyControlled();
-}
-
-void UASInventoryComponent::SpawnDefaultInventory()
-{
-	if (!GetOwner()->HasAuthority())
-	{
-		return;
-	}
-	
-	for (UASWeaponDefinition* Def : DefaultInventory)
-	{
-		AddWeapon(Def);
-	}
-	SetActiveSlotAuth(0);
 }
 
 bool UASInventoryComponent::AddWeapon(UASWeaponDefinition* Definition)
@@ -454,15 +441,14 @@ int32 UASInventoryComponent::GetAmmoAtSlot(int32 Slot) const
 
 bool UASInventoryComponent::IsLocallyControlled() const
 {
-	const APlayerState* PS = Cast<APlayerState>(GetOwner());
-	const AController* C = PS ? PS->GetOwningController() : nullptr;
-	return C && C->IsLocalController();
+	const AActor* Owner = GetOwner();
+	return Owner && Owner->HasLocalNetOwner();
 }
 
 struct FASSlotChangedMessage UASInventoryComponent::BuildSlotMessage(int32 Slot) const
 {
 	FASSlotChangedMessage Message;
-	Message.Owner = Cast<APlayerState>(GetOwner());
+	Message.Owner = GetOwner();
 	Message.SlotIndex = Slot;
 	
 	if (const UASWeaponInstance* Instance = GetInstanceAtSlot(Slot))
@@ -493,7 +479,7 @@ void UASInventoryComponent::BroadcastActiveSlotChanged(int32 OldSlot, int32 NewS
 	LastBroadcastActiveSlot = NewSlot;
 	
 	FASActiveSlotChangedMessage Message;
-	Message.Owner = Cast<APlayerState>(GetOwner());
+	Message.Owner = GetOwner();
 	Message.OldSlot = OldSlot;
 	Message.NewSlot = NewSlot;
 	

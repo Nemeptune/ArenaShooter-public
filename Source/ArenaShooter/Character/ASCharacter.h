@@ -8,7 +8,6 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
-#include "Pickups/ASAmmoReceiver.h"
 #include "Weapon/ASWeaponHolder.h"
 #include "ASCharacter.generated.h"
 
@@ -40,7 +39,7 @@ struct FReplicatedDeathState
 };
 
 UCLASS()
-class ARENASHOOTER_API AASCharacter : public ACharacter, public IAbilitySystemInterface, public IASWeaponHolder, public IASAmmoReceiver
+class ARENASHOOTER_API AASCharacter : public ACharacter, public IAbilitySystemInterface, public IASWeaponHolder
 {
 	GENERATED_BODY()
 	
@@ -52,6 +51,7 @@ public:
 	AASCharacter(const FObjectInitializer& ObjectInitializer);
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PossessedBy(AController* NewController) override; 	// Only called on the Server. Calls before Server's AcknowledgePossession.
+	virtual void UnPossessed() override;
 	virtual void OnRep_PlayerState() override; 	// Client only
 	virtual void Tick(float DeltaTime) override;
 	virtual void PostInitializeComponents() override;
@@ -79,7 +79,6 @@ public:
 	float GetMaxShield() const;
 
 	void RemoveCharacterAbilities(); // Server
-	void ReleaseLoadout();
 
 protected:
 
@@ -119,8 +118,6 @@ public:
  
 	virtual FName GetWeapon1PAttachPoint() const override;
 	virtual FName GetWeapon3PAttachPoint() const override;
-	
-	virtual int32 GiveAmmo(FGameplayTag AmmoType, int32 Amount) override;
 	
 	// ===========================================================
 	//  Death & ragdoll
@@ -181,9 +178,6 @@ private:
 	// TODO: make actions as abilities
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ArenaShooter|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
-
-	UPROPERTY(EditDefaultsOnly, Category = "ArenaShooter|Input", meta = (AllowPrivateAccess = "true"))
-	TArray<TObjectPtr<UInputAction>> SelectSlotActions; 
 	
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ArenaShooter|Input", meta = (AllowPrivateAccess = "true"))
@@ -207,8 +201,6 @@ private:
 	void LookUp(const FInputActionValue& Value);
 	UFUNCTION()
 	void Turn(const FInputActionValue& Value);
-	UFUNCTION()
-	void HandleSelectSlot(int32 Slot);
 	
 	// ===========================================================
 	//  Animation

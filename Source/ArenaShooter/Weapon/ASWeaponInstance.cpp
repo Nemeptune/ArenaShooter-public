@@ -9,8 +9,6 @@
 #include "ASWeaponDefinition.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
 #include "Inventory/ASInventoryComponent.h"
-#include "GameFramework/Controller.h"
-#include "GameFramework/PlayerState.h"
 #include "Iris/ReplicationSystem/ReplicationFragmentUtil.h"
 #include "Net/UnrealNetwork.h"
 
@@ -56,9 +54,8 @@ bool UASWeaponInstance::HasAuthority() const
 
 bool UASWeaponInstance::IsLocallyControlled() const
 {
-	const APlayerState* PS = Cast<APlayerState>(GetOwningActor());
-	const AController* Controller = PS ? PS->GetOwningController() : nullptr;
-	return Controller && Controller->IsLocalController();
+	const AActor* Owner = GetOwningActor();
+	return Owner && Owner->HasLocalNetOwner();
 }
 
 void UASWeaponInstance::Initialize(UASWeaponDefinition* InDefinition)

@@ -86,7 +86,7 @@ void AASPickup::TryPickup(AActor* Actor)
 		return;
 	}
 
-	if (GiveTo(Actor,ASC))
+	if (GiveTo(ASC))
 	{
 		Deactivate();
 	}

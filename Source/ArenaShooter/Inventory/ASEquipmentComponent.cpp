@@ -22,10 +22,9 @@ UASEquipmentComponent::UASEquipmentComponent(const FObjectInitializer& ObjectIni
 	SetIsReplicatedByDefault(false);
 }
 
-void UASEquipmentComponent::BindToInventory()
+void UASEquipmentComponent::InitializeWithAbilitySystem(UAbilitySystemComponent* AbilitySystem)
 {
-	const APawn* Pawn = Cast<APawn>(GetOwner());
-	UASInventoryComponent* Inv = UASInventoryComponent::FindInventoryComponent(Pawn ? Pawn->GetPlayerState() : nullptr);
+	UASInventoryComponent* Inv = UASInventoryComponent::FindInventoryComponent(AbilitySystem);
 	if (Inv == BoundInventory.Get())
 	{
 		return;

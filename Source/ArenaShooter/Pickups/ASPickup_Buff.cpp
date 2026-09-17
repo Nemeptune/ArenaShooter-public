@@ -72,7 +72,7 @@ void AASPickup_Buff::ApplyFXParameters(UNiagaraComponent* Component) const
 	}
 }
 
-bool AASPickup_Buff::GiveTo(AActor* Actor, UAbilitySystemComponent* ASC)
+bool AASPickup_Buff::GiveTo(UAbilitySystemComponent* ASC)
 {
 	const UASBuffDefinition* Buff = GetActiveBuff();
 	if (!ASC || !Buff || !Buff->BuffEffect)

@@ -20,6 +20,9 @@ class ARENASHOOTER_API UASInputComponent : public UEnhancedInputComponent
 public:
 	template<class UserClass, typename PressedFuncType, typename ReleasedFuncType>
 	void BindAbilityActions(const UASInputConfig* InputConfig, UserClass* Object, PressedFuncType PressedFunc, ReleasedFuncType ReleasedFunc);
+	
+	template<class UserClass, typename FuncType>
+	void BindInputEvents(const UASInputConfig* InputConfig, UserClass* Object, FuncType Func);
 };
 
 template <class UserClass, typename PressedFuncType, typename ReleasedFuncType>
@@ -40,6 +43,20 @@ void UASInputComponent::BindAbilityActions(const UASInputConfig* InputConfig, Us
 			{
 				BindAction(Action.InputAction, ETriggerEvent::Completed, Object, ReleasedFunc, Action.InputTag);
 			}
+		}
+	}
+}
+
+template <class UserClass, typename FuncType>
+void UASInputComponent::BindInputEvents(const UASInputConfig* InputConfig, UserClass* Object, FuncType Func)
+{
+	check(InputConfig);
+	
+	for (const FASInputAction& Action : InputConfig->EventInputActions)
+	{
+		if (Action.InputAction && Action.InputTag.IsValid())
+		{
+			BindAction(Action.InputAction, ETriggerEvent::Started, Object, Func, Action.InputTag);
 		}
 	}
 }

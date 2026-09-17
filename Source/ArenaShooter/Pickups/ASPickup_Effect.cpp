@@ -5,7 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayEffectTypes.h"
 
-bool AASPickup_Effect::GiveTo(AActor* Actor, UAbilitySystemComponent* ASC)
+bool AASPickup_Effect::GiveTo(UAbilitySystemComponent* ASC)
 {
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
 	Context.AddSourceObject(this);

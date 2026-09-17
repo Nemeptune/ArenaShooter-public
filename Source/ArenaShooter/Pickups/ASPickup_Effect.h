@@ -19,5 +19,5 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "ArenaShooter|Pickup")
 	TArray<TSubclassOf<UGameplayEffect>> EffectsToApply;
 
-	virtual bool GiveTo(AActor* Actor, UAbilitySystemComponent* ASC) override;
+	virtual bool GiveTo(UAbilitySystemComponent* ASC) override;
 };

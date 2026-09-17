@@ -85,6 +85,8 @@ protected:
 
 	void AbilityInputPressed(FGameplayTag InputTag);
 	void AbilityInputReleased(FGameplayTag InputTag);
+	
+	void SendInputEvent(FGameplayTag EventTag);
 
 private:
 	uint32 FakeProjectileIdCounter;

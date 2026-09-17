@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "ASInventoryMessages.generated.h"
 
-class APlayerState;
+class AActor;
 class UASWeaponDefinition;
 
 /** One slot's contents changed — filled, emptied, or its ammo moved.
@@ -14,7 +14,7 @@ struct FASSlotChangedMessage
 	GENERATED_BODY()
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
-	TObjectPtr<APlayerState> Owner = nullptr;
+	TObjectPtr<AActor> Owner = nullptr;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
 	int32 SlotIndex = INDEX_NONE;
@@ -33,7 +33,7 @@ struct FASActiveSlotChangedMessage
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
-	TObjectPtr<APlayerState> Owner = nullptr;
+	TObjectPtr<AActor> Owner = nullptr;
 
 	/** What listeners were last told — not what the model previously held. */
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory")

@@ -18,8 +18,6 @@ class ARENASHOOTER_API IASAmmoReceiver
 {
 	GENERATED_BODY()
 
-	
 public:
-	
 	virtual int32 GiveAmmo(FGameplayTag AmmoType, int32 Amount) = 0;
 };

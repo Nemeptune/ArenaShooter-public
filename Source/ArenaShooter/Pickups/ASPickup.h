@@ -28,7 +28,7 @@ protected:
 
 	// === Per-pickup policy (server only) ===
 	virtual bool CanGiveTo(UAbilitySystemComponent* ASC);
-	virtual bool GiveTo(AActor* Actor, UAbilitySystemComponent* ASC) PURE_VIRTUAL(AASPickup::GiveTo, return false;)
+	virtual bool GiveTo(UAbilitySystemComponent* ASC) PURE_VIRTUAL(AASPickup::GiveTo, return false;)
 
 	void TryPickup(AActor* Actor);
 	void Deactivate();

@@ -5,9 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
+#include "Weapon/ASAmmoReceiver.h"
 #include "ASInventoryComponent.generated.h"
 
 
+class UAbilitySystemComponent;
 class UASWeaponInstance;
 class UASWeaponDefinition;
 struct FASSlotChangedMessage;
@@ -26,14 +28,14 @@ struct FASActiveSlotState
 };
 
 UCLASS( ClassGroup=(ArenaShooter), meta=(BlueprintSpawnableComponent) )
-class ARENASHOOTER_API UASInventoryComponent : public UActorComponent
+class ARENASHOOTER_API UASInventoryComponent : public UActorComponent, public IASAmmoReceiver
 {
 	GENERATED_BODY()
 
 public:	
 	UASInventoryComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 	
-	static UASInventoryComponent* FindInventoryComponent(const APlayerState* PlayerState);
+	static UASInventoryComponent* FindInventoryComponent(const UAbilitySystemComponent* AbilitySystem);
 	
 	virtual void InitializeComponent() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -41,12 +43,13 @@ public:
 	virtual void UninitializeComponent() override;
 	
 	// --- Authority ---
-	void SpawnDefaultInventory();
 	bool AddWeapon(UASWeaponDefinition* Definition);
 	bool RemoveSlot(int32 Slot);
 	void RemoveAll();
+	void SetActiveSlotAuth(int32 NewSlot);
 	
-	int32 GiveAmmo(FGameplayTag AmmoType, int32 Amount);
+	//~IASAmmoReceiver
+	virtual int32 GiveAmmo(FGameplayTag AmmoType, int32 Amount) override;
 	
 	UFUNCTION(BlueprintCallable, Category = "ArenaShooter|Inventory")
 	void RequestSwitch(int32 NewSlot);
@@ -77,17 +80,12 @@ protected:
 	
 	UASWeaponInstance* GetWantedActiveInstance() const;
 	
-	void SetActiveSlotAuth(int32 NewSlot);
-	
 	int32 FindSlotByInstance(const UASWeaponInstance* Instance) const;
 	int32 FindSlotByDefinition(const UASWeaponDefinition* Definition) const;
 	int32 FindFirstEmptySlot() const;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Inventory", meta = (ClampMin = 1))
 	int32 Capacity = 5;
-	
-	UPROPERTY(EditDefaultsOnly, Category = "Inventory")
-	TArray<TObjectPtr<UASWeaponDefinition>> DefaultInventory;
 	
 	UPROPERTY(ReplicatedUsing = OnRep_Slots)
 	TArray<TObjectPtr<UASWeaponInstance>> Slots;

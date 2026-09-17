@@ -160,6 +160,8 @@ void AASGameMode_Deathmatch::OnPlayerKilled(AActor* Killer, AActor* Victim)
 
 	AASCharacter* VictimChar = Cast<AASCharacter>(Victim);
 	if (!VictimChar) return;
+	
+	StripLoadout(VictimChar->GetAbilitySystemComponent());
 
 	if (IsMatchInProgress())
 	{
@@ -230,6 +232,8 @@ void AASGameMode_Deathmatch::RespawnPlayer(TWeakObjectPtr<AController> Controlle
 	}
 	
 	Controller->Possess(NewCharacter);
+	
+	SetPlayerDefaults(NewCharacter);
 
 	if (AASPlayerController* PC = Cast<AASPlayerController>(Controller))
 	{
@@ -287,12 +291,8 @@ void AASGameMode_Deathmatch::ResetForMatchStart()
 			if (UAbilitySystemComponent* ASC = PS->GetAbilitySystemComponent())
 			{
 				ASC->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(FASGameplayTags::Buff));
+				StripLoadout(ASC);
 			}
-		}
-		
-		if (AASCharacter* Character = PC->GetPawn<AASCharacter>())
-		{
-			Character->ReleaseLoadout();
 		}
 
 		RespawnPlayer(PC);

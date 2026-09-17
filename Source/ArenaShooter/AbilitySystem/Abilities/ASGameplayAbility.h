@@ -9,7 +9,6 @@
 class AASCharacter;
 class AASPlayerController;
 class UASAbilitySystemComponent;
-class UASInventoryComponent;
 
 /**
  *	Defines how an ability is meant to activate.
@@ -71,9 +70,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "ArenaShooter|Ability")
 	AASCharacter* GetASCharacterFromActorInfo() const;
-	
-	UFUNCTION(BlueprintPure, Category = "ArenaShooter|Ability")
-	UASInventoryComponent* GetInventoryFromActorInfo() const;
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "ArenaShooter|Input")
 	FGameplayTag InputTag;

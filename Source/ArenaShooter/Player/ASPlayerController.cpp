@@ -37,6 +37,7 @@ void AASPlayerController::SetupInputComponent()
 	if (UASInputComponent* IC = Cast<UASInputComponent>(InputComponent))
 	{
 		IC->BindAbilityActions(AbilityInputConfig, this, &ThisClass::AbilityInputPressed, &ThisClass::AbilityInputReleased);
+		IC->BindInputEvents(AbilityInputConfig, this, &ThisClass::SendInputEvent);
 
 		if (OpenGameMenuAction)
 		{
@@ -121,5 +122,17 @@ void AASPlayerController::AbilityInputReleased(FGameplayTag InputTag)
 	{
 		AbilitySystemComponent->AbilityInputReleased(InputTag);
 	}
+}
+
+void AASPlayerController::SendInputEvent(FGameplayTag EventTag)
+{
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+	
+	FGameplayEventData Payload;
+	Payload.EventTag = EventTag;
+	AbilitySystemComponent->HandleGameplayEvent(EventTag, &Payload);
 }
 

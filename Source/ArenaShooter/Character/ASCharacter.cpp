@@ -23,7 +23,6 @@
 #include "Net/UnrealNetwork.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Sound/SoundCue.h"
-#include "Inventory/ASInventoryComponent.h"
 
 AASCharacter::AASCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UASCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -86,12 +85,7 @@ void AASCharacter::PossessedBy(AController* NewController)
 			PC->SetAbilitySystemComponent(AbilitySystemComponent);
 		}
 		
-		EquipmentComponent->BindToInventory();
-		
-		if (UASInventoryComponent* InventoryComponent = UASInventoryComponent::FindInventoryComponent(PS))
-		{
-			InventoryComponent->SpawnDefaultInventory(); // grant the loadout for a fresh spawn
-		}
+		EquipmentComponent->InitializeWithAbilitySystem(AbilitySystemComponent);
 
 		if (UASAnimInstance* AnimInst = Cast<UASAnimInstance>(GetMesh()->GetAnimInstance()))
 		{
@@ -109,6 +103,12 @@ void AASCharacter::PossessedBy(AController* NewController)
 			Mesh3P->TickPose(FMath::Max(GetWorld()->GetDeltaSeconds(), UE_KINDA_SMALL_NUMBER), false);
 		}
 	}
+}
+
+void AASCharacter::UnPossessed()
+{
+	RemoveCharacterAbilities();
+	Super::UnPossessed();
 }
 
 void AASCharacter::OnRep_PlayerState()
@@ -139,7 +139,7 @@ void AASCharacter::OnRep_PlayerState()
 		SetHealth(GetMaxHealth());
 		SetShield(GetMaxShield());
 		
-		EquipmentComponent->BindToInventory();
+		EquipmentComponent->InitializeWithAbilitySystem(AbilitySystemComponent);
 
 		if (UASAnimInstance* AnimInst = Cast<UASAnimInstance>(GetMesh()->GetAnimInstance()))
 		{
@@ -189,14 +189,6 @@ void AASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		//Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AASCharacter::Move);
-		
-		for (int32 i = 0; i < SelectSlotActions.Num(); ++i)
-		{
-			if (SelectSlotActions[i])
-			{
-				EnhancedInputComponent->BindAction(SelectSlotActions[i], ETriggerEvent::Started, this, &AASCharacter::HandleSelectSlot, i);
-			}
-		}
 
 		//Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AASCharacter::LookUp);
@@ -290,15 +282,6 @@ void AASCharacter::RemoveCharacterAbilities()
 	AbilitySystemComponent->bCharacterAbilitiesGiven = false;
 }
 
-void AASCharacter::ReleaseLoadout()
-{
-	if (UASInventoryComponent* InventoryComponent = UASInventoryComponent::FindInventoryComponent(GetPlayerState()))
-	{
-		InventoryComponent->RemoveAll();
-	}
-	RemoveCharacterAbilities();
-}
-
 void AASCharacter::AddCharacterAbilities()
 {
 	// Grant abilities only on the server
@@ -387,10 +370,6 @@ void AASCharacter::StartDeath(const FVector& ImpulseDir, const FVector& ImpulseL
 	DeathState.ImpulseLocation = ImpulseLocation;
 	DeathState.ImpulseBone = ImpulseBone;
 
-	if (UASInventoryComponent* InventoryComponent = UASInventoryComponent::FindInventoryComponent(GetPlayerState()))
-	{
-		InventoryComponent->RemoveAll();
-	}
 	RemoveCharacterAbilities();
 	
 	if (AController* C = GetController())
@@ -480,12 +459,6 @@ FName AASCharacter::GetWeapon3PAttachPoint() const
 	return WeaponAttachSocket3P;
 }
 
-int32 AASCharacter::GiveAmmo(FGameplayTag AmmoType, int32 Amount)
-{
-	UASInventoryComponent* Inventory = UASInventoryComponent::FindInventoryComponent(GetPlayerState());
-	return Inventory ? Inventory->GiveAmmo(AmmoType, Amount) : 0;
-}
-
 TArray<FName> AASCharacter::Get1PSockets() const
 {
 	TArray<FName> Out;
@@ -538,14 +511,6 @@ void AASCharacter::Turn(const FInputActionValue& Value)
 		Rate *= Settings->GetLookSensitivity();
 	}
 	AddControllerYawInput(Rate);
-}
-
-void AASCharacter::HandleSelectSlot(int32 Slot)
-{
-	if (UASInventoryComponent* Inv = UASInventoryComponent::FindInventoryComponent(GetPlayerState()))
-	{
-		Inv->RequestSwitch(Slot);
-	}
 }
 
 void AASCharacter::LinkAnimLayers(TSubclassOf<UAnimInstance> FPLayer, TSubclassOf<UAnimInstance> TPLayer)

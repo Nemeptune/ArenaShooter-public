@@ -33,4 +33,8 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Meta = (TitleProperty = "InputAction"))
 	TArray<FASInputAction> AbilityInputActions;
+	
+	/** Inputs delivered to the ability system as gameplay events; the tag is the event. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Meta = (TitleProperty = "InputAction"))
+	TArray<FASInputAction> EventInputActions;
 };

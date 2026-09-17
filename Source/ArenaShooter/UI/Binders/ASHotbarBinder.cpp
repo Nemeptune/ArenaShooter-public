@@ -11,6 +11,7 @@
 #include "UI/ViewModels/ASWeaponSlotViewModel.h"
 #include "Inventory/ASInventoryMessages.h"
 #include "Weapon/ASWeaponDefinition.h"
+#include "AbilitySystemBlueprintLibrary.h"
 
 void UASHotbarBinder::Init(AASPlayerController* PC, UASHUDWidget* InHUDWidget)
 {
@@ -89,7 +90,7 @@ void UASHotbarBinder::EnsureSlots(int32 NumSlots)
 
 void UASHotbarBinder::OnSlotChanged(FGameplayTag, const FASSlotChangedMessage& Message)
 {
-	if (Message.Owner != BoundPS.Get())
+	if (Message.Owner.Get() != BoundPS.Get())
 	{
 		return;
 	}
@@ -111,7 +112,7 @@ void UASHotbarBinder::ApplySlot(const FASSlotChangedMessage& Message)
 
 void UASHotbarBinder::OnActiveSlotChanged(FGameplayTag Channel, const FASActiveSlotChangedMessage& Message)
 {
-	if (Message.Owner != BoundPS.Get())
+	if (Message.Owner.Get() != BoundPS.Get())
 	{
 		return;
 	}
@@ -146,7 +147,7 @@ void UASHotbarBinder::HandlePawnChanged(APawn* OldPawn, APawn* NewPawn)
 
 void UASHotbarBinder::RefreshAll()
 {
-	UASInventoryComponent* Inv = UASInventoryComponent::FindInventoryComponent(BoundPS.Get());
+	UASInventoryComponent* Inv = UASInventoryComponent::FindInventoryComponent(UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(BoundPS.Get()));
 
 	EnsureSlots(Inv ? Inv->GetCapacity() : 0);
 	if (SlotsVM.Num() == 0)
