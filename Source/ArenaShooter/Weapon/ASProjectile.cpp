@@ -23,6 +23,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"
 #include "Settings/GASDeveloperSettings.h"
+#include "System/ASProfiling.h"
 
 AASProjectile::AASProjectile(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -154,7 +155,12 @@ void AASProjectile::PreInitializeComponents()
 
 void AASProjectile::BeginPlay()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASProjectile::BeginPlay);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Projectiles);
+	
 	Super::BeginPlay();
+	
+	ASProfiling::AddToGauge(TEXT("ProjectileActors"), 1);
 
 	if ((!HasAuthority() && ProjectileId != NULL_PROJECTILE_ID) || bIsFakeProjectile)
 	{
@@ -258,8 +264,16 @@ void AASProjectile::BeginPlay()
 	bHasSpawnedFully = true;
 }
 
+void AASProjectile::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	ASProfiling::AddToGauge(TEXT("ProjectileActors"), -1);
+	Super::EndPlay(EndPlayReason);
+}
+
 void AASProjectile::CatchupTick(float CatchupTickDelta)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASProjectile::CatchupTick);
+	
 	if (ProjectileMovement)
 	{
 		ProjectileMovement->TickComponent(CatchupTickDelta, LEVELTICK_All, nullptr);
@@ -526,6 +540,9 @@ void AASProjectile::SwitchToRealProjectile()
 
 void AASProjectile::Tick(float DeltaTime)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASProjectile::Tick);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Projectiles);
+	
 	Super::Tick(DeltaTime);
 
 	if (bCorrectFakeProjectilePositionOverTime)
@@ -609,6 +626,9 @@ void AASProjectile::OnBounce(const FHitResult& ImpactResult, const FVector& Impa
 
 void AASProjectile::OnHitBoxOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASProjectile::OnHitBoxOverlapBegin);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Projectiles);
+	
 	if (!IsValid(OtherActor))
 	{
 		return;
@@ -784,6 +804,9 @@ void AASProjectile::OnRep_RepProjectileMovement()
 
 void AASProjectile::Detonate(bool bHasDirectImpactTarget, AActor* OtherActor, UPrimitiveComponent* OtherComp, const FVector& HitLocation, const FVector& HitNormal)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASProjectile::Detonate);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Projectiles);
+	
 	/** Never detonate non-owning simulated proxies until they've finished their local resimulation. */
 	if (!IsServerProjectile() && ProjectileId == NULL_PROJECTILE_ID && !bFinishedResim)
 	{
@@ -842,7 +865,8 @@ void AASProjectile::Detonate(bool bHasDirectImpactTarget, AActor* OtherActor, UP
 					{
 						if (!LinkedAuthProjectile->bDetonated)
 						{
-							PROJECTILE_LOG(Warning, TEXT("Missed prediction: Fake projectile (%s) detonated against something it shouldn't have. Reconciling by switching to real projectile..."), *GetNameSafe(this));
+							PROJECTILE_LOG(Verbose, TEXT("Missed prediction: Fake projectile (%s) detonated against something it shouldn't have. Reconciling by switching to real projectile..."), *GetNameSafe(this));
+							CSV_CUSTOM_STAT(ArenaShooter, ProjectileMispredictions, 1, ECsvCustomStatOp::Accumulate);
 							LinkedAuthProjectile->SwitchToRealProjectile();
 						}
 					}
@@ -995,7 +1019,8 @@ bool AASProjectile::ShouldAuthProjDetonateToOwner(bool bLog) const
 		{
 			if (bLog)
 			{
-				PROJECTILE_LOG(Warning, TEXT("Missed prediction: Fake projectile (%s) missed its detonation. Reconciling by destroying the fake projectile and using real projectile's detonation..."), *GetNameSafe(LinkedFakeProjectile));
+				PROJECTILE_LOG(Verbose, TEXT("Missed prediction: Fake projectile (%s) missed its detonation. Reconciling by destroying the fake projectile and using real projectile's detonation..."), *GetNameSafe(LinkedFakeProjectile));
+				CSV_CUSTOM_STAT(ArenaShooter, ProjectileMispredictions, 1, ECsvCustomStatOp::Accumulate);
 			}
 
 			return true;
@@ -1010,7 +1035,8 @@ bool AASProjectile::ShouldAuthProjDetonateToOwner(bool bLog) const
 			{
 				if (bLog)
 				{
-					PROJECTILE_LOG(Warning, TEXT("Missed prediction: Fake projectile (%s) detonated too early and/or in the wrong location (Error Margin: %fm). Reconciling by resimulating the detonation with the real projectile..."), *GetNameSafe(LinkedFakeProjectile), FVector::Dist(LinkedFakeProjectile->GetActorLocation(), GetActorLocation()) * 0.01f);
+					PROJECTILE_LOG(Verbose, TEXT("Missed prediction: Fake projectile (%s) detonated too early and/or in the wrong location (Error Margin: %fm). Reconciling by resimulating the detonation with the real projectile..."), *GetNameSafe(LinkedFakeProjectile), FVector::Dist(LinkedFakeProjectile->GetActorLocation(), GetActorLocation()) * 0.01f);
+					CSV_CUSTOM_STAT(ArenaShooter, ProjectileMispredictions, 1, ECsvCustomStatOp::Accumulate);
 				}
 
 				return true;
@@ -1040,9 +1066,10 @@ bool AASProjectile::ShouldAuthProjDetonateToOwner(bool bLog) const
 		{
 			if (bLog)
 			{
-				PROJECTILE_LOG(Warning, TEXT("Missed prediction: Fake projectile detonated so early that it's already been destroyed and can't be found "
+				PROJECTILE_LOG(Verbose, TEXT("Missed prediction: Fake projectile detonated so early that it's already been destroyed and can't be found "
 								 "(corresponding auth projectile: (%s)). The fake projectile should have switched to the real one by now. "
 								 "Reconciling by using real projectile's detonation..."), *GetNameSafe(this));
+				CSV_CUSTOM_STAT(ArenaShooter, ProjectileMispredictions, 1, ECsvCustomStatOp::Accumulate);
 			}
 
 			return true;
@@ -1132,6 +1159,9 @@ bool AASProjectile::HasBlastLineOfSight(const FVector& Origin, const AActor* Tar
 
 void AASProjectile::ApplyEffectToTarget(const bool bDirectImpact, const AActor* Target, const FHitResult& Hit, float DamageScale) const
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASProjectile::ApplyEffectToTarget);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Damage);
+	
 	if (UASAbilitySystemComponent* TargetASC = UASAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Target))
 	{
 		FGameplayEffectSpecHandle EffectSpec = MakeEffectSpec(bDirectImpact, Target, Hit);
@@ -1173,6 +1203,9 @@ void AASProjectile::GetReplicatedCustomConditionState(FCustomPropertyConditionSt
 
 void AASProjectile::OnRep_DetonationInfo()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASProjectile::OnRep_DetonationInfo);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Projectiles);
+	
 	if (!ensure(DetonationInfo.bDetonated))
 	{
 		return;
@@ -1259,6 +1292,9 @@ void AASProjectile::OnRep_DetonationInfo()
 
 void AASProjectile::DetonateWithDetonationInfo()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASProjectile::DetonateWithDetonationInfo);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Projectiles);
+	
 	if (!ensure(DetonationInfo.bDetonated))
 	{
 		return;

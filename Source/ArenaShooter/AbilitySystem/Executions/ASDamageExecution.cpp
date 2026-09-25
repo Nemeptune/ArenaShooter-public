@@ -5,6 +5,7 @@
 
 #include "AbilitySystem/Attributes/ASCombatAttributeSet.h"
 #include "System/ASGameplayTags.h"
+#include "System/ASProfiling.h"
 
 namespace
 {
@@ -38,6 +39,11 @@ UASDamageExecution::UASDamageExecution()
 
 void UASDamageExecution::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams, FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASDamageExecution::Execute_Implementation);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Damage);
+	
+	CSV_CUSTOM_STAT(ArenaShooter, DamageExecutions, 1, ECsvCustomStatOp::Accumulate);
+	
 	const FGameplayEffectSpec& Spec = ExecutionParams.GetOwningSpec();
 	
 	FAggregatorEvaluateParameters EvalParams;

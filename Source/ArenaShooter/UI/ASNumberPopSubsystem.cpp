@@ -33,6 +33,8 @@ void UASNumberPopSubsystem::PlayerControllerChanged(APlayerController* NewPlayer
 
 void UASNumberPopSubsystem::AddNumberPop(const FASNumberPop& Pop)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASNumberPopSubsystem::AddNumberPop);
+	
 	UNiagaraComponent* Comp = EnsureComponent();
 	if (!Comp)
 	{

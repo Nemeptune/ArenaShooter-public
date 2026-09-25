@@ -9,6 +9,7 @@
 #include "NiagaraDataInterfaceArrayFunctionLibrary.h"
 #include "FX/ImpactStatics.h"
 #include "Kismet/GameplayStatics.h"
+#include "System/ASProfiling.h"
 #include "Weapon/ASWeaponInstance.h"
 
 AASGameplayCueNotify_WeaponFireActor::AASGameplayCueNotify_WeaponFireActor()
@@ -25,6 +26,9 @@ AASGameplayCueNotify_WeaponFireActor::AASGameplayCueNotify_WeaponFireActor()
 
 bool AASGameplayCueNotify_WeaponFireActor::OnExecute_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASGameplayCueNotify_WeaponFireActor::OnExecute_Implementation);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_FireCue);
+	
 	if (!MyTarget || MyTarget->GetNetMode() == NM_DedicatedServer)
 	{
 		UE_LOG(LogAS, Warning, TEXT("FireCue: no target, or dedicated server."));
@@ -50,8 +54,10 @@ bool AASGameplayCueNotify_WeaponFireActor::OnExecute_Implementation(AActor* MyTa
 		return false;
 	}
 	
-	UE_LOG(LogAS, Log, TEXT("FireCue on %s: weapon=%s firstPerson=%d mesh=%s sound=%s"),
+	UE_LOG(LogAS, Verbose, TEXT("FireCue on %s: weapon=%s firstPerson=%d mesh=%s sound=%s"),
 	*GetNameSafe(MyTarget), *GetNameSafe(Weapon), bFirstPerson, *GetNameSafe(WeaponMesh), *GetNameSafe(FireSound));
+	
+	CSV_CUSTOM_STAT(ArenaShooter, FireCuesPlayed, 1, ECsvCustomStatOp::Accumulate);
 
 	if (BoundMesh.Get() != WeaponMesh)
 	{
@@ -77,6 +83,7 @@ bool AASGameplayCueNotify_WeaponFireActor::OnExecute_Implementation(AActor* MyTa
 
 					if (Hit->bBlockingHit)
 					{
+						CSV_CUSTOM_STAT(ArenaShooter, Impacts, 1, ECsvCustomStatOp::Accumulate);
 						ImpactHits.Add(*Hit);
 					}
 				}

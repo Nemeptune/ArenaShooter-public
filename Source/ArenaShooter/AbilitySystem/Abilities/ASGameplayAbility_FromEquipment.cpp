@@ -9,6 +9,7 @@
 #include "System/ASLogChannels.h"
 #include "Physics/ASPhysicalMaterial.h"
 #include "AbilitySystem/ASGameplayEffectContext.h"
+#include "System/ASProfiling.h"
 #include "Weapon/ASWeaponInstance.h"
 
 UASGameplayAbility_FromEquipment::UASGameplayAbility_FromEquipment()
@@ -39,7 +40,7 @@ bool UASGameplayAbility_FromEquipment::CheckCost(const FGameplayAbilitySpecHandl
 	const UASWeaponInstance* Weapon = Cast<UASWeaponInstance>(GetSourceObject(Handle, ActorInfo));
 	if (!Weapon || Weapon->GetAmmo() < Weapon->GetFireCost())
 	{
-		UE_LOG(LogAS, Warning, TEXT("%s refused on %s: Ammo=%d Cost=%d"),
+		UE_LOG(LogAS, Verbose, TEXT("%s refused on %s: Ammo=%d Cost=%d"),
 			*GetName(), ActorInfo->IsNetAuthority() ? TEXT("server") : TEXT("client"),
 				Weapon ? Weapon->GetAmmo() : -1,  Weapon ? Weapon->GetFireCost() : -1);
 		return false;
@@ -84,6 +85,8 @@ void UASGameplayAbility_FromEquipment::NotifyWeaponFired()
 
 void UASGameplayAbility_FromEquipment::ExecuteFireCue(const FGameplayAbilityTargetDataHandle& TargetData)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASGameplayAbility_FromEquipment::ExecuteFireCue);
+	
 	if (!FireCueTag.IsValid())
 	{
 		return;
@@ -108,7 +111,7 @@ void UASGameplayAbility_FromEquipment::ExecuteFireCue(const FGameplayAbilityTarg
 	CueParameters.SourceObject = GetSourceWeapon();   // the cue notifies cast this back to the instance
 	CueParameters.Instigator = GetAvatarActorFromActorInfo();
 
-	UE_LOG(LogAS, Log, TEXT("FireCue SEND: tag=%s weapon=%s avatar=%s authority=%d locallyControlled=%d targets=%d"),
+	UE_LOG(LogAS, Verbose, TEXT("FireCue SEND: tag=%s weapon=%s avatar=%s authority=%d locallyControlled=%d targets=%d"),
 		*FireCueTag.ToString(),
 		*CueParameters.SourceObject->GetName(),
 		*GetNameSafe(GetAvatarActorFromActorInfo()),
@@ -116,23 +119,24 @@ void UASGameplayAbility_FromEquipment::ExecuteFireCue(const FGameplayAbilityTarg
 		(int32)CurrentActorInfo->IsLocallyControlled(),
 		TargetData.Num());
 	
+	if (CurrentActorInfo->IsNetAuthority())
+	{
+		// On the server this is the unreliable multicast every client receives.
+		CSV_CUSTOM_STAT(ArenaShooter, FireCuesSent, 1, ECsvCustomStatOp::Accumulate);
+	}
+	
 	ASC->ExecuteGameplayCue(FireCueTag, CueParameters);
 }
 
 bool UASGameplayAbility_FromEquipment::GetWeaponViewpoint(FVector& OutLocation, FRotator& OutRotation) const
 {
-	AActor* Avatar = GetAvatarActorFromActorInfo();
+	const AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (!Avatar)
 	{
 		return false;
 	}
-
-	OutLocation = Avatar->GetActorLocation();
-	OutRotation = Avatar->GetActorRotation();
-	if (AController* Controller = Avatar->GetInstigatorController())
-	{
-		Controller->GetPlayerViewPoint(OutLocation, OutRotation);
-	}
+	
+	Avatar->GetActorEyesViewPoint(OutLocation, OutRotation);
 	return true;
 }
 
@@ -171,6 +175,9 @@ bool UASGameplayAbility_FromEquipment::ApplyEffectToTargetFromHit(TSubclassOf<UG
 
 int32 UASGameplayAbility_FromEquipment::ApplyDamageEffectToTargets(TArrayView<const FHitResult> Hits) const
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASGameplayAbility_FromEquipment::ApplyDamageEffectToTargets);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Damage);
+	
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
 	const UASWeaponInstance* Weapon = GetSourceWeapon();
 	

@@ -53,6 +53,8 @@ namespace
 
 void UImpactStatics::SpawnImpactFX(const UObject* WorldContextObject, const UNiagaraDataChannelAsset* Channel, TConstArrayView<TObjectPtr<UNiagaraSystem>> Systems,TConstArrayView<FHitResult> Hits, const FVector& MuzzlePosition)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UImpactStatics::SpawnImpactFX);
+	
 	const UNiagaraDataChannel_GameplayBurst* BurstChannel = Channel ? Cast<UNiagaraDataChannel_GameplayBurst>(Channel->Get()) : nullptr;
 	if (!BurstChannel || Hits.IsEmpty())
 	{

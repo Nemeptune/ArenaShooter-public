@@ -16,6 +16,7 @@ AASGameplayCueNotify_BeamActor::AASGameplayCueNotify_BeamActor()
 	PrimaryActorTick.bStartWithTickEnabled = true;
 	
 	bAutoDestroyOnRemove = true;
+	PrimaryActorTick.TickGroup = TG_PostUpdateWork;
 }
 
 bool AASGameplayCueNotify_BeamActor::OnActive_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters)
@@ -88,6 +89,9 @@ bool AASGameplayCueNotify_BeamActor::OnActive_Implementation(AActor* MyTarget, c
 
 void AASGameplayCueNotify_BeamActor::Tick(float DeltaTime)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASGameplayCueNotify_BeamActor::Tick);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_FireCue);
+	
 	Super::Tick(DeltaTime);
 
 	if (!BeamComp)

@@ -23,7 +23,11 @@ void UASAnimInstance::NativeInitializeAnimation()
 
 void UASAnimInstance::NativeUpdateAnimation(float DeltaTime)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASAnimInstance::NativeUpdateAnimation);
+	
 	Super::NativeUpdateAnimation(DeltaTime);
+	
+	CharacterState.bIsFiring = bIsFiringGameThread;
 
 	APawn* Pawn = TryGetPawnOwner();
 	if (!Pawn) return;
@@ -44,6 +48,8 @@ void UASAnimInstance::NativeUpdateAnimation(float DeltaTime)
 
 void UASAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASAnimInstance::NativeThreadSafeUpdateAnimation);
+	
 	Super::NativeThreadSafeUpdateAnimation(DeltaSeconds);
 
 	UpdateLocationData(DeltaSeconds);
@@ -74,7 +80,7 @@ void UASAnimInstance::InitializeWithAbilitySystem(UAbilitySystemComponent* ASC)
 
 void UASAnimInstance::OnFireTagChanged(FGameplayTag Tag, int32 NewCount)
 {
-	bIsFiring = (NewCount > 0);
+	bIsFiringGameThread = (NewCount > 0);
 }
 
 void UASAnimInstance::UpdateLocationData(float DeltaSeconds)
@@ -152,9 +158,9 @@ void UASAnimInstance::UpdateWallDetectionHeuristic()
 void UASAnimInstance::UpdateCharacterStateData(float DeltaSeconds)
 {
 	IsOnGround = CharacterState.bIsMovingOnGround;
+
+	bIsFiring = CharacterState.bIsFiring;
 	
-	// TODO update crouch state //
-	// TODO is firing //
 	TimeSinceFiredWeapon += DeltaSeconds;
 	if (bIsFiring)
 	{
@@ -230,6 +236,12 @@ void UASAnimInstance::ProcessTurnYawCurve()
 		float ProcessedRootYawOffset = RootYawOffset - (TurnYawCurveValue - PreviousTurnYawCurveValue);
 		SetRootYawOffset(ProcessedRootYawOffset);
 	}
+}
+
+UASCharacterMovementComponent* UASAnimInstance::GetCharacterMovement() const
+{
+	const APawn* Pawn = TryGetPawnOwner();
+	return Pawn ? Cast<UASCharacterMovementComponent>(Pawn->GetMovementComponent()) : nullptr;
 }
 
 void UASAnimInstance::UpdateAimingData()

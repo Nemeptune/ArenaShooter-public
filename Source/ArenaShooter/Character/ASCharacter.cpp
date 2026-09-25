@@ -23,6 +23,8 @@
 #include "Net/UnrealNetwork.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Sound/SoundCue.h"
+#include "System/ASProfiling.h"
+#include "Weapon/ASLagCompensationSubsystem.h"
 
 AASCharacter::AASCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UASCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -50,8 +52,25 @@ AASCharacter::AASCharacter(const FObjectInitializer& ObjectInitializer)
 	EquipmentComponent = CreateDefaultSubobject<UASEquipmentComponent>(TEXT("EquipmentComponent"));
 }
 
+void AASCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	if (HasAuthority())
+	{
+		if (UASLagCompensationSubsystem* LagCompensation = GetWorld()->GetSubsystem<UASLagCompensationSubsystem>())
+		{
+			LagCompensation->RegisterCharacter(this);
+		}
+	}
+}
+
 void AASCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (UASLagCompensationSubsystem* LagCompensation = GetWorld()->GetSubsystem<UASLagCompensationSubsystem>())
+	{
+		LagCompensation->UnregisterCharacter(this);
+	}
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -193,6 +212,8 @@ void AASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		//Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AASCharacter::LookUp);
 		EnhancedInputComponent->BindAction(TurnAction, ETriggerEvent::Triggered, this, &AASCharacter::Turn);
+		
+		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, GetCharacterMovement<UASCharacterMovementComponent>(), &UASCharacterMovementComponent::RequestDash);
 	}
 }
 
@@ -201,6 +222,20 @@ void AASCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
 	DOREPLIFETIME(AASCharacter, DeathState);
+	DOREPLIFETIME_CONDITION(AASCharacter, MovementServerTime, COND_SimulatedOnly);
+}
+
+void AASCharacter::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker)
+{
+	Super::PreReplication(ChangedPropertyTracker);
+
+	// Replication runs after this frame's tick, when lag compensation recorded this same pose and time.
+	MovementServerTime = GetWorld()->GetTimeSeconds();
+}
+
+FVector AASCharacter::GetPawnViewLocation() const
+{
+	return FirstPersonCameraComponent ? FirstPersonCameraComponent->GetComponentLocation() : Super::GetPawnViewLocation();
 }
 
 UAbilitySystemComponent* AASCharacter::GetAbilitySystemComponent() const
@@ -369,6 +404,12 @@ void AASCharacter::StartDeath(const FVector& ImpulseDir, const FVector& ImpulseL
 	DeathState.ImpulseDir = ImpulseDir;
 	DeathState.ImpulseLocation = ImpulseLocation;
 	DeathState.ImpulseBone = ImpulseBone;
+	
+	// Corpses can't be shot (DeadBody ignores the Weapon channel), so stop recording this one.
+	if (UASLagCompensationSubsystem* LagCompensation = GetWorld()->GetSubsystem<UASLagCompensationSubsystem>())
+	{
+		LagCompensation->UnregisterCharacter(this);
+	}
 
 	RemoveCharacterAbilities();
 	
@@ -384,6 +425,9 @@ void AASCharacter::StartDeath(const FVector& ImpulseDir, const FVector& ImpulseL
 // Server and on all clients
 void AASCharacter::SetRagdollPhysics()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASCharacter::SetRagdollPhysics);
+	CSV_EVENT(ArenaShooter, TEXT("Death"));
+	
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -530,5 +574,13 @@ void AASCharacter::SwapLayer(USkeletalMeshComponent* Mesh, TSubclassOf<UAnimInst
 	// self layer, which evaluates as the ref pose.
 	Mesh->LinkAnimClassLayers(Wanted);
 	Current = Wanted;
+}
+
+void AASCharacter::OnRep_MovementServerTime()
+{
+	if (UASLagCompensationSubsystem* LagCompensation = GetWorld()->GetSubsystem<UASLagCompensationSubsystem>())
+	{
+		LagCompensation->NoteServerSnapshot(MovementServerTime);
+	}
 }
 

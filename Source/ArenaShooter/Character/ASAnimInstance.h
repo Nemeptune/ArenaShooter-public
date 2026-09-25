@@ -38,6 +38,7 @@ struct FAnimCharacterState
 	bool bIsMovingOnGround = true;
 	EMovementMode MovementMode = MOVE_Walking;
 	float GravityZ = -980.f;
+	bool bIsFiring = false;
 };
 
 /**
@@ -134,6 +135,7 @@ protected:
 
 	void OnFireTagChanged(FGameplayTag Tag, int32 NewCount);
 	
+	bool bIsFiringGameThread = false;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character State Data")
 	bool bIsFiring;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character State Data")
@@ -225,11 +227,8 @@ private:
 	UFUNCTION(BlueprintCallable, Category = "TurnInPlace", meta = (BlueprintThreadSafe))
 	void ProcessTurnYawCurve();
 
-	UFUNCTION(BlueprintCallable, Category = "Settings", meta = (BlueprintThreadSafe))
-	FORCEINLINE UASCharacterMovementComponent* GetCharacterMovement() const
-	{
-		return Cast<UASCharacterMovementComponent>(TryGetPawnOwner()->GetMovementComponent());
-	}
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UASCharacterMovementComponent* GetCharacterMovement() const;
 
 	//helper functions
 	UFUNCTION(meta = (BlueprintThreadSafe))

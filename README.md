@@ -60,7 +60,7 @@ A weapon swap is instant on the owning client and still converges to the server:
 |---|---|
 | Pistol, Rifle | Predicted hitscan through GAS target data |
 | Shotgun | Multi-pellet trace. All pellet hits travel in **one** gameplay cue via a custom `FASGameplayEffectContext`, and damage is coalesced per target per shot (one number, one proc, one death check) |
-| Railgun | Held-fire beam (`WaitInputRelease`): server damage ticks plus a looping cue actor that traces locally on every client for a latency-free beam end |
+| Railgun | Held-fire beam (`WaitInputRelease`): server damage ticks, **lag-compensated** (see below), plus a looping cue actor that traces locally on every client for a latency-free beam end |
 | Rocket launcher | The predicted projectile above, with radial falloff, line-of-sight checks and knockback |
 
 ### Rocket jumping and knockback
@@ -68,6 +68,52 @@ A weapon swap is instant on the owning client and still converges to the server:
 
 - **Momentum:** explosions build an impulse from `FMomentumParams` (inner / outer radius falloff, self-damage scaling), damped against the current velocity.
 - **Authority:** knockback is **server-authoritative** with a forced client correction. Predicting it was designed and measured, then rejected on purpose: it turns a small constant delay into a rare false start followed by a yank.
+
+### Lag compensation and multithreaded hit tests
+`UASLagCompensationSubsystem`, `ASHitboxMath`, `UASCharacterMovementComponent`, `AS.Stress.LagComp`
+
+The railgun is traced on the server, which sees targets about one round trip later than the shooter did. At 150 ms RTT against a strafing target, the server was 90 cm off and hit **6.4%** of the time. The fix is to rewind every other character to the moment the shooter saw on screen, then trace.
+
+**Why multithreading.** In a 1v1 it isn't needed. A hit test costs about 3 µs per ray and real play produces 1–3 rays per call. But lag compensation is the part of a shooter server that grows with player count: every shot tests every character. So the hit test was written from the start as a pure function over plain data, made parallel, and **measured**, to find where threads pay off and where they don't.
+
+**How it works**
+- **History:** at the end of every server frame, each character's hit capsules (from its physics asset, with the zone materials used for headshots) are saved into a ~350 ms ring buffer. It's plain data: no UObjects, safe to read from worker threads.
+- **Exact rewind time:** the server stamps every character update with its world time. The client stamps every movement packet with the server time of the frame on its screen. The aim travels in the same packet, so the server rewinds to exactly the moment the shooter saw, with the aim that went with it. There's no ping estimate to drift or spike.
+- **Hit test in three phases:**
+  1. **Game thread:** snapshot every character's capsules at the rewound time, interpolated between the two frames around it.
+  2. **`ParallelFor` over the rays:** each ray does a world trace and then the capsule tests, and writes only its own result slot, so nothing is locked. World traces are read-only scene queries, which the engine's own async traces also run on worker threads.
+  3. **Game thread:** turn capsule hits into `FHitResult`s for the damage code.
+- **Broad phase:** each character gets a bounding sphere. A ray only tests a character's capsules if it enters the sphere before the best hit so far.
+- **Small batches stay inline:** batches under `MinRaysPerTask` (8) run on the game thread, where scheduling would cost more than it saves. Dedicated servers run `ParallelFor` single-threaded unless launched with `-useperfthreads`.
+
+**Accuracy:** railgun vs a strafing target, 150 ms emulated RTT, perfect client aim (`AS.Test.AutoAim`)
+
+| Rewind | 600 cm/s | 1500 cm/s |
+|---|---|---|
+| None | 6.4% | — |
+| By averaged ping | 98.6% | 82.6% |
+| **By the client's frame timestamp** | **99.8%** | **98.0%** |
+
+Adding just 17 ms to the rewind drops the 1500 cm/s result to 29%, so the timestamp is accurate to a few milliseconds. The remaining misses happen only where the target reverses direction and the client keeps drawing it moving the old way for a moment.
+
+**Performance:** `AS.Stress.LagComp`, Ryzen 5 3600 (6 cores / 12 threads), standalone Development build. Times are the median per batch.
+
+| 100 characters, capsule tests | 1 ray | 17 rays | 1,000 rays | 10,000 rays |
+|---|---|---|---|---|
+| Every capsule, single-threaded | 28.5 µs | 487 µs | 29.2 ms | 294 ms |
+| Broad phase, single-threaded | 1.2 µs | 21.8 µs | 1.75 ms | 17.6 ms |
+| Broad phase + `ParallelFor` | 1.2 µs | 10.1 µs | **0.26 ms** | **2.5 ms** |
+| **Combined gain** | ×24 | ×48 | **×113** | **×116** |
+
+| Full hit test (world trace + capsules), single-threaded → `ParallelFor` | 1 ray | 4 rays | 17 rays | 100 rays | 1,000 rays |
+|---|---|---|---|---|---|
+| 2 characters | ×0.8 | ×1.6 | ×2.0 | ×4.0 | ×5.6 |
+| 100 characters | ×1.0 | ×1.2 | ×2.3 | ×4.4 | ×6.0 |
+
+What the numbers say:
+- **Algorithm first, threads second.** The broad phase alone cut capsule work 17×. Threads added about ×7 on top of it.
+- **Pure maths scales past the core count:** ×7.0 on 6 cores at 10,000 rays, because Hyper-Threading adds a bit when nothing is shared. Rays with world traces stop at ×5.5–6.1, because every ray queries the same physics scene.
+- **Small batches don't benefit.** A single ray is no faster through `ParallelFor`. Real play (82% of calls are 1 ray) stays on the game thread, and a full 17-ray fan costs about 0.05 ms of a 16.7 ms frame. At 100 characters and 1,000 rays per frame, the same code takes **4.0 ms on one thread and 0.67 ms threaded**.
 
 ### Weapon FX that scale
 - **Fire cues:** a single persistent, **retriggerable GameplayCue actor per pawn** (`AASGameplayCueNotify_WeaponFireActor`).
@@ -103,7 +149,7 @@ A weapon swap is instant on the owning client and still converges to the server:
 ### Online sessions
 `Plugins/MultiplayerSessions`
 
-- **My own session layer** on top of OnlineSubsystem, for Steam lobbies and LAN:
+- **Session layer** on top of OnlineSubsystem, for Steam lobbies and LAN:
   - host, browse and join, with travel owned by the subsystem;
   - a view-model front end;
   - per-machine session-handle tracking, with a single `LeaveSessionAndTravel` path shared by voluntary quit and network failure, so players can re-host immediately after any disconnect.
@@ -140,9 +186,9 @@ Source/ArenaShooter/
     Attributes/      health / shield / combat attributes
     Executions/      damage execution
     GameplayCues/    weapon fire, beam and buff aura cue actors
-  Character/       character, movement component (knockback), anim instance
+  Character/       character, movement component (knockback, predicted dash and bunny hop), anim instance
   Inventory/       inventory (predicted slot switching), equipment, inventory messages
-  Weapon/          weapon definition, instance, cosmetic actor, projectile
+  Weapon/          weapon definition, instance, cosmetic actor, projectile, lag compensation, hitbox maths
   Pickups/         pickup base, effect / ammo / buff pickups
   GameModes/       game mode, duel mode, game state
   Player/          player controller, player state, local player
@@ -153,7 +199,7 @@ Source/ArenaShooter/
   Settings/        game settings registry, user and audio settings
   Online/          Steam avatars
   Input/           input config and component
-  System/          native gameplay tags, log channels, preload subsystem
+  System/          native gameplay tags, log channels, preload subsystem, profiling markers, test and stress console commands
 ```
 
 ### Testing multiplayer

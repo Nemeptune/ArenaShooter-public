@@ -32,6 +32,9 @@ UASAT_SpawnPredictedProjectile* UASAT_SpawnPredictedProjectile::SpawnPredictedPr
 
 void UASAT_SpawnPredictedProjectile::Activate()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASAT_SpawnPredictedProjectile::Activate);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Projectiles);
+	
 	Super::Activate();
 
 	if (IsPredictingClient())
@@ -224,6 +227,9 @@ void UASAT_SpawnPredictedProjectile::SendSpawnDataToServer(const FVector& InLoca
 
 void UASAT_SpawnPredictedProjectile::OnSpawnDataReplicated(const FGameplayAbilityTargetDataHandle& Data, FGameplayTag Activation)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASAT_SpawnPredictedProjectile::OnSpawnDataReplicated);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Projectiles);
+	
 	// copy target data before we consume it
 	const FGameplayAbilityTargetData* TargetData = Data.Get(0);
 
@@ -312,7 +318,7 @@ void UASAT_SpawnPredictedProjectile::OnTaskRejected()
 		{
 			if (const uint32* Key = PC->FakeProjectiles.FindKey(SpawnedFakeProj.Get()))
 			{
-				PROJECTILE_LOG(Error, TEXT("Removed %i"), *Key);
+				PROJECTILE_LOG(Error, TEXT("Removed fake projectile %u from the unlinked list."), *Key);
 				PC->FakeProjectiles.Remove(*Key);
 			}
 		}

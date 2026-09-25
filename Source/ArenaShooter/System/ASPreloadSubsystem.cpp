@@ -4,9 +4,12 @@
 #include "ASPreloadSubsystem.h"
 
 #include "AbilitySystemGlobals.h"
+#include "EngineUtils.h"
 #include "LoadingScreenManager.h"
 #include "PipelineStateCache.h"
+#include "Components/SkyLightComponent.h"
 #include "Engine/AssetManager.h"
+#include "Engine/SkyLight.h"
 #include "UI/ASUIConfig.h"
 #include "UI/ASUISettings.h"
 
@@ -91,9 +94,24 @@ bool UASPreloadSubsystem::ShouldShowLoadingScreen(FString& OutReason) const
 
 void UASPreloadSubsystem::HandleLoadingScreenVisibilityChanged(bool bVisible)
 {
-	if (!bVisible)
+	if (bVisible)
 	{
-		bWaitForPSOs = false;
+		return;
+	}
+
+	bWaitForPSOs = false;
+
+	// The engine's own sky capture ran on the first tick after LoadMap, before PSOs finished and
+	// while PSO-delayed primitives had no scene proxy. Everything is drawable now.
+	if (UWorld* World = GetGameInstance()->GetWorld())
+	{
+		for (TActorIterator<ASkyLight> It(World); It; ++It)
+		{
+			if (USkyLightComponent* SkyLight = It->GetLightComponent())
+			{
+				SkyLight->RecaptureSky();
+			}
+		}
 	}
 }
 

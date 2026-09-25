@@ -10,6 +10,7 @@
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Inventory/ASInventoryMessages.h"
+#include "System/ASProfiling.h"
 #include "Weapon/ASWeaponDefinition.h"
 #include "Weapon/ASWeaponInstance.h"
 
@@ -321,6 +322,7 @@ void UASInventoryComponent::OnRep_ActiveSlotState()
 		// Only adopt the server's value once it has caught up to our latest request.
 		if (ActiveSlotState.Seq == LocalSeq && ActiveSlotState.SlotIndex != PredictedSlot)
 		{
+			CSV_CUSTOM_STAT(ArenaShooter, SlotCorrections, 1, ECsvCustomStatOp::Accumulate);
 			const int32 OldSlot = PredictedSlot;
 			PredictedSlot = ActiveSlotState.SlotIndex;
 			RefreshActiveInstance();

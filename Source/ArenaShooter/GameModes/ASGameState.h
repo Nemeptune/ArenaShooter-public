@@ -28,11 +28,16 @@ public:
 
 	virtual void AddPlayerState(APlayerState* PlayerState) override;
 	virtual void RemovePlayerState(APlayerState* PlayerState) override;
+	virtual void OnRep_MatchState() override;
 
 	void SetMatchResult(APlayerState* InWinner);
 
 	APlayerState* GetWinner() const;
 	bool HasMatchEnded() const;
+	
+protected:
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
 private:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
@@ -40,6 +45,8 @@ private:
 
 	UFUNCTION()
 	void OnRep_MatchEnded();
+	
+	void EndMatchStateRegion();
 
 	/** null = draw */
 	UPROPERTY(Transient, Replicated)
@@ -50,4 +57,7 @@ private:
 	
 	UPROPERTY(BlueprintAssignable)
 	FSimpleDynamicMulticastDelegate OnPlayerJoined;
+	
+	/** Insights region for the current match state, so a trace can be split by phase. 0 = none open. */
+	uint64 MatchStateRegionId = 0;
 };

@@ -81,6 +81,12 @@ bool UASCombatAttributeSet::PreGameplayEffectExecute(struct FGameplayEffectModCa
 {
 	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
 	{
+		const AActor* Avatar = Data.Target.AbilityActorInfo.IsValid() ? Data.Target.AbilityActorInfo->AvatarActor.Get() : nullptr;
+		if (Avatar && !Avatar->CanBeDamaged())
+		{
+			return false;
+		}
+		
 		ShieldDamageThisExecution = 0.f;
 		if (GetShield() > 0)
 		{
@@ -99,6 +105,9 @@ bool UASCombatAttributeSet::PreGameplayEffectExecute(struct FGameplayEffectModCa
 
 void UASCombatAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASCombatAttributeSet::PostGameplayEffectExecute);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_Damage);
+	
 	Super::PostGameplayEffectExecute(Data);
 	
 	AActor* TargetActor = nullptr;

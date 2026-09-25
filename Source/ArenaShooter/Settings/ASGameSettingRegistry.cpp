@@ -184,8 +184,15 @@ UGameSettingCollection* UASGameSettingRegistry::InitializeVideoSettings(UASLocal
 		AddQualityBucket(Screen, Setting, TEXT("PostProcessingQuality"), LOCTEXT("PP_Name","Post Processing"),
 		LOCTEXT("PostProcessingQuality_Description", "Bloom, motion blur, depth of field."),
 		GET_LOCAL_SETTINGS_FUNCTION_PATH(GetPostProcessingQuality), GET_LOCAL_SETTINGS_FUNCTION_PATH(SetPostProcessingQuality));
+		
+		AddQualityBucket(Screen, Setting, TEXT("GlobalIlluminationQuality"), LOCTEXT("GI_Name","Global Illumination"),
+		LOCTEXT("GlobalIlluminationQuality_Description", "Quality of dynamic indirect lighting. The most expensive graphics setting."),
+		GET_LOCAL_SETTINGS_FUNCTION_PATH(GetGlobalIlluminationQuality), GET_LOCAL_SETTINGS_FUNCTION_PATH(SetGlobalIlluminationQuality));
+		
+		AddQualityBucket(Screen, Setting, TEXT("ReflectionQuality"), LOCTEXT("Refl_Name","Reflections"),
+		LOCTEXT("ReflectionQuality_Description", "Resolution and accuracy of reflections."),
+		GET_LOCAL_SETTINGS_FUNCTION_PATH(GetReflectionQuality), GET_LOCAL_SETTINGS_FUNCTION_PATH(SetReflectionQuality));
 	}
-	
 	// FrameCap
 	{
 		UGameSettingValueDiscreteDynamic_Number* Setting = NewObject<UGameSettingValueDiscreteDynamic_Number>();

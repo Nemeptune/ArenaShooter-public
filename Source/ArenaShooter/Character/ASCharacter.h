@@ -49,6 +49,7 @@ public:
 	// ===========================================================
 
 	AASCharacter(const FObjectInitializer& ObjectInitializer);
+	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PossessedBy(AController* NewController) override; 	// Only called on the Server. Calls before Server's AcknowledgePossession.
 	virtual void UnPossessed() override;
@@ -57,6 +58,11 @@ public:
 	virtual void PostInitializeComponents() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+	
+	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
+
+	// The first-person camera, so eye traces start where the player sees from, on every machine.
+	virtual FVector GetPawnViewLocation() const override;
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override; 	// Implement IAbilitySystemInterface
 	
@@ -195,6 +201,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ArenaShooter|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> TurnAction;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ArenaShooter|Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> DashAction;
+	
 	UFUNCTION()
 	void Move(const FInputActionValue& Value);
 	UFUNCTION()
@@ -224,4 +233,10 @@ private:
 
 	static void SwapLayer(USkeletalMeshComponent* Mesh, TSubclassOf<UAnimInstance>& Current, TSubclassOf<UAnimInstance> Wanted);
 	
+	// Server world time of the movement in this update, so clients can report which moment they see. Simulated proxies only.
+	UPROPERTY(ReplicatedUsing = OnRep_MovementServerTime)
+	double MovementServerTime = 0.;
+
+	UFUNCTION()
+	void OnRep_MovementServerTime();
 };

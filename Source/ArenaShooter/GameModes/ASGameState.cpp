@@ -7,6 +7,7 @@
 #include "Messages/ASUIMessages.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "System/ASProfiling.h"
 
 void AASGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -41,6 +42,30 @@ void AASGameState::RemovePlayerState(APlayerState* PlayerState)
 {
 	Super::RemovePlayerState(PlayerState);
 	OnPlayerRemoved.Broadcast(PlayerState);
+}
+
+void AASGameState::OnRep_MatchState()
+{
+	EndMatchStateRegion();
+	MatchStateRegionId = TRACE_BEGIN_REGION_WITH_ID(*FString::Printf(TEXT("MatchState.%s"), *MatchState.ToString()), TEXT("ArenaShooter"));
+	CSV_EVENT(ArenaShooter, TEXT("MatchState.%s"), *MatchState.ToString());
+
+	Super::OnRep_MatchState();
+}
+
+void AASGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	EndMatchStateRegion();
+	Super::EndPlay(EndPlayReason);
+}
+
+void AASGameState::EndMatchStateRegion()
+{
+	if (MatchStateRegionId != 0)
+	{
+		TRACE_END_REGION_WITH_ID(MatchStateRegionId);
+		MatchStateRegionId = 0;
+	}
 }
 
 void AASGameState::SetMatchResult(APlayerState* InWinner)

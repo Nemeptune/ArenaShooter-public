@@ -203,6 +203,8 @@ bool UASAvatarSubsystem::TickPending(float)
 
 bool UASAvatarSubsystem::TryBuildAvatar(uint64 PlatformUserId)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASAvatarSubsystem::TryBuildAvatar);
+	
 #if AS_WITH_STEAM_AVATARS
 	check(IsInGameThread());
 	ISteamFriends* Friends = SteamFriends();

@@ -14,6 +14,7 @@
 #include "GameFramework/Pawn.h"
 #include "EngineUtils.h"
 #include "Pickups/ASPickup.h"
+#include "System/ASProfiling.h"
 
 AASGameMode_Deathmatch::AASGameMode_Deathmatch()
 {
@@ -156,6 +157,8 @@ void AASGameMode_Deathmatch::PostLogin(APlayerController* NewPlayer)
 
 void AASGameMode_Deathmatch::OnPlayerKilled(AActor* Killer, AActor* Victim)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASGameMode_Deathmatch::OnPlayerKilled);
+	
 	if (!HasAuthority()) return;
 
 	AASCharacter* VictimChar = Cast<AASCharacter>(Victim);
@@ -207,9 +210,13 @@ void AASGameMode_Deathmatch::OnPlayerKilled(AActor* Killer, AActor* Victim)
 
 void AASGameMode_Deathmatch::RespawnPlayer(TWeakObjectPtr<AController> ControllerPtr)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(AASGameMode_Deathmatch::RespawnPlayer);
+	
 	AController* Controller = ControllerPtr.Get();
 	if (!IsValid(Controller)) return;
-
+	
+	CSV_EVENT(ArenaShooter, TEXT("Respawn"));
+	
 	RespawnTimers.Remove(Controller);
 
 	AActor* StartSpot = FindPlayerStart(Controller);

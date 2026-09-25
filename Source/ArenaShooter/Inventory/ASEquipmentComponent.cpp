@@ -49,6 +49,8 @@ void UASEquipmentComponent::InitializeWithAbilitySystem(UAbilitySystemComponent*
 
 void UASEquipmentComponent::EquipWeapon(UASWeaponInstance* Instance)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASEquipmentComponent::EquipWeapon);
+	
 	if (EquippedWeapon == Instance)
 	{
 		return;
@@ -100,6 +102,8 @@ void UASEquipmentComponent::EndPlay(const EEndPlayReason::Type Reason)
 
 void UASEquipmentComponent::SpawnCosmetic()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASEquipmentComponent::SpawnCosmetic);
+	
 	IASWeaponHolder* Holder = GetHolder();
 	AActor* OwnerActor = GetOwner();
 	const UASWeaponDefinition* Definition = EquippedWeapon ? EquippedWeapon->GetDefinition() : nullptr;

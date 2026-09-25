@@ -18,7 +18,7 @@ protected:
 	virtual void OnEquipped() override;
 
 private:
-	void ApplyLoadedRoundVisibility();
+	void ApplyLoadedRoundVisibility(bool bLoaded);
 
 	FTimerHandle ReloadVisualTimer;
 };

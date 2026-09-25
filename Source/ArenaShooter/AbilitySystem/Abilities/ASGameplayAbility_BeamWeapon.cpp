@@ -7,6 +7,8 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitInputRelease.h"
+#include "System/ASLogChannels.h"
+#include "Weapon/ASLagCompensationSubsystem.h"
 #include "Weapon/ASWeaponInstance.h"
 
 UASGameplayAbility_BeamWeapon::UASGameplayAbility_BeamWeapon()
@@ -44,6 +46,9 @@ void UASGameplayAbility_BeamWeapon::ActivateAbility(const FGameplayAbilitySpecHa
 
 void UASGameplayAbility_BeamWeapon::HandleBeamTick()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASGameplayAbility_BeamWeapon::HandleBeamTick);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_WeaponFire);
+	
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -68,7 +73,9 @@ void UASGameplayAbility_BeamWeapon::HandleBeamTick()
 	}
 
 	FHitResult Hit;
-	if (PerformServerSweptTrace(Hit))
+	const bool bHit = PerformServerSweptTrace(Hit);
+	UE_LOG(LogAS_Weapon, Verbose, TEXT("Beam sample: %s"), bHit ? *GetNameSafe(Hit.GetActor()) : TEXT("miss"));
+	if (bHit)
 	{
 		ApplyDamage(Hit);
 	}
@@ -76,20 +83,16 @@ void UASGameplayAbility_BeamWeapon::HandleBeamTick()
 
 bool UASGameplayAbility_BeamWeapon::PerformServerSweptTrace(FHitResult& OutResult)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASGameplayAbility_BeamWeapon::PerformServerSweptTrace);
+	
 	OutResult = FHitResult();
 
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	UWorld* World = GetWorld();
-	if (!Avatar || !World)
-	{
-		bHasPrevAim = false;
-		return false;
-	}
-
+	const UASLagCompensationSubsystem* LagCompensation = World ? World->GetSubsystem<UASLagCompensationSubsystem>() : nullptr;
 	FVector ViewLocation;
 	FRotator ViewRotation;
-
-	if (!GetWeaponViewpoint(ViewLocation, ViewRotation))
+	if (!Avatar || !LagCompensation || !GetWeaponViewpoint(ViewLocation, ViewRotation))
 	{
 		bHasPrevAim = false;
 		return false;
@@ -98,68 +101,67 @@ bool UASGameplayAbility_BeamWeapon::PerformServerSweptTrace(FHitResult& OutResul
 	const FVector Start = ViewLocation;
 	const FVector CurrDir = ViewRotation.Vector();
 	const FVector FromDir = bHasPrevAim ? PrevAimDir : CurrDir;
+	PrevAimDir = CurrDir;
+	bHasPrevAim = true;
 
 	// Fan sub-rays only if aim actually moved since last sample; steady aim = one trace.
 	const float Dot = FMath::Clamp(FVector::DotProduct(FromDir, CurrDir), -1.f, 1.f);
 	int32 NumSteps = 1;
-
-	if (bHasPrevAim && Dot < 0.99999f)
+	if (FromDir != CurrDir && Dot < 0.99999f)
 	{
 		const float SweepAngleDeg = FMath::RadiansToDegrees(FMath::Acos(Dot));
 		NumSteps = FMath::Clamp(FMath::CeilToInt(SweepAngleDeg / FMath::Max(AnglePerSubstepDeg, 0.1f)), 1, MaxSubsteps);
 	}
-
 	const int32 StartIndex = (NumSteps > 1) ? 0 : 1; // i==0 is FromDir: skip when identical to CurrDir
-	
-	FCollisionQueryParams Params = MakeWeaponTraceParams();
-	Params.bReturnPhysicalMaterial = true;
 
-	bool bHit = false;
-	float BestDistSq = TNumericLimits<float>::Max();
+	TArray<FASShotRay> Rays;
 	for (int32 i = StartIndex; i <= NumSteps; ++i)
 	{
 		const float Alpha = static_cast<float>(i) / static_cast<float>(NumSteps);
 		const FVector Dir = FMath::Lerp(FromDir, CurrDir, Alpha).GetSafeNormal();
-		if (Dir.IsNearlyZero())
+		if (!Dir.IsNearlyZero())
 		{
-			continue;
+			Rays.Add({ Start, Start + Dir * TraceRange });
 		}
-		const FVector End = Start + Dir * TraceRange;
+	}
 
-		FHitResult StepHit;
-		const bool bStepBlocking = World->LineTraceSingleByChannel(StepHit, Start, End, COLLISION_WEAPON, Params);
+	TArray<FHitResult> Hits;
+	Hits.SetNum(Rays.Num());
+	LagCompensation->LineTraceRewound(Rays, COLLISION_WEAPON, MakeWeaponTraceParams(), Avatar, Hits);
 
-		UAbilitySystemComponent* HitASC = bStepBlocking ? UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(StepHit.GetActor()) : nullptr;
-
+	bool bHit = false;
+	FVector::FReal BestDistSq = TNumericLimits<FVector::FReal>::Max();
+	for (int32 i = 0; i < Rays.Num(); ++i)
+	{
+		const FHitResult& StepHit = Hits[i];
+		UAbilitySystemComponent* HitASC = StepHit.bBlockingHit ? UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(StepHit.GetActor()) : nullptr;
 		if (HitASC)
 		{
-			const float DistSq = FVector::DistSquared(Start, StepHit.ImpactPoint);
+			const FVector::FReal DistSq = FVector::DistSquared(Start, StepHit.ImpactPoint);
 			if (DistSq < BestDistSq)
 			{
 				BestDistSq = DistSq;
 				OutResult = StepHit;
 				bHit = true;
-			}	
+			}
 		}
-
+		
+		// green = hit a damageable target, yellow = hit world geo, red = hit nothing
 #if ENABLE_DRAW_DEBUG
 		if (bDrawDebugTrace)
 		{
-			const FVector LineEnd = bStepBlocking ? StepHit.ImpactPoint : End;
-
-			// green = hit a damageable target, yellow = hit world geo, red = hit nothing
-			const FColor LineColor = HitASC ? FColor::Green : (bStepBlocking ? FColor::Yellow : FColor::Red);
+			const FVector LineEnd = StepHit.bBlockingHit ? FVector(StepHit.ImpactPoint) : Rays[i].End;
+			
+			const FColor LineColor = HitASC ? FColor::Green : (StepHit.bBlockingHit ? FColor::Yellow : FColor::Red);
 			DrawDebugLine(World, Start, LineEnd, LineColor, false, 0.f, 0, 1.f);
-			if (bStepBlocking)
+			if (StepHit.bBlockingHit)
 			{
 				DrawDebugPoint(World, StepHit.ImpactPoint, 8.f, LineColor, false, 0.f);
 			}
 		}
 #endif
 	}
-	
-	PrevAimDir = CurrDir;
-	bHasPrevAim = true;
+
 	return bHit;
 }
 

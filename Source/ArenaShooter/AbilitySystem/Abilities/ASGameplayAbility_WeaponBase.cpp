@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "ArenaShooter.h"
+#include "System/ASProfiling.h"
 #include "Weapon/ASWeaponInstance.h"
 
 void UASGameplayAbility_WeaponBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -41,6 +42,9 @@ void UASGameplayAbility_WeaponBase::EndAbility(const FGameplayAbilitySpecHandle 
 
 void UASGameplayAbility_WeaponBase::StartRangedWeaponTargeting()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASGameplayAbility_WeaponBase::StartRangedWeaponTargeting);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_WeaponFire);
+	
 	check(CurrentActorInfo);
 
 	UAbilitySystemComponent* MyAbilityComponent = CurrentActorInfo->AbilitySystemComponent.Get();
@@ -87,6 +91,9 @@ void UASGameplayAbility_WeaponBase::HandleTargetDataOnAuthority(const FGameplayA
 
 void UASGameplayAbility_WeaponBase::OnTargetDataReadyCallback(const FGameplayAbilityTargetDataHandle& InData, FGameplayTag ApplicationTag)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASGameplayAbility_WeaponBase::OnTargetDataReadyCallback);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(AS_WeaponFire);
+	
 	UAbilitySystemComponent* MyAbilityComponent = CurrentActorInfo->AbilitySystemComponent.Get();
 	check(MyAbilityComponent);
 
@@ -105,6 +112,7 @@ void UASGameplayAbility_WeaponBase::OnTargetDataReadyCallback(const FGameplayAbi
 
 		if (CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo))
 		{
+			CSV_CUSTOM_STAT(ArenaShooter, Shots, 1, ECsvCustomStatOp::Accumulate);
 			NotifyWeaponFired();
 			HandleTargetDataOnAuthority(LocalTargetDataHandle);
 			ExecuteFireCue(LocalTargetDataHandle);
@@ -117,6 +125,8 @@ void UASGameplayAbility_WeaponBase::OnTargetDataReadyCallback(const FGameplayAbi
 
 void UASGameplayAbility_WeaponBase::PerformLocalTargeting(TArray<FHitResult>& OutHits)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UASGameplayAbility_WeaponBase::PerformLocalTargeting);
+	
 	FVector ViewLocation;
 	FRotator ViewRotation;
 	if (!GetWeaponViewpoint(ViewLocation, ViewRotation))
