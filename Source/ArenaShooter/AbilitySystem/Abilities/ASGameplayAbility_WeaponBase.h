@@ -4,7 +4,43 @@
 
 #include "CoreMinimal.h"
 #include "ASGameplayAbility_FromEquipment.h"
+#include "Abilities/GameplayAbilityTargetTypes.h"
 #include "ASGameplayAbility_WeaponBase.generated.h"
+
+/**
+ * One hitscan bullet as the client fired it. The server keeps only the ray and the moment: it traces the
+ * ray itself, against hitboxes rewound to ViewServerTime, and never applies the hit the client found.
+ */
+USTRUCT()
+struct FASGameplayAbilityTargetData_ShotHit : public FGameplayAbilityTargetData_SingleTargetHit
+{
+	GENERATED_BODY()
+
+	/** Server time of the world the shooter's screen showed when they fired. Zero if unknown. */
+	UPROPERTY()
+	double ViewServerTime = 0.;
+
+	virtual UScriptStruct* GetScriptStruct() const override
+	{
+		return FASGameplayAbilityTargetData_ShotHit::StaticStruct();
+	}
+
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		FGameplayAbilityTargetData_SingleTargetHit::NetSerialize(Ar, Map, bOutSuccess);
+		Ar << ViewServerTime;
+		return true;
+	}
+};
+
+template<>
+struct TStructOpsTypeTraits<FASGameplayAbilityTargetData_ShotHit> : public TStructOpsTypeTraitsBase2<FASGameplayAbilityTargetData_ShotHit>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
 
 /**
  * Base class for all weapon hitscan fire abilities.
@@ -32,7 +68,14 @@ protected:
 	void OnRangedWeaponTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetData);
 
 	void OnTargetDataReadyCallback(const FGameplayAbilityTargetDataHandle& InData, FGameplayTag ApplicationTag);
-	
+
+	/**
+	 * Server, for a remote client's shot: replaces the hits the client claims with the server's own trace of the
+	 * same rays, against hitboxes rewound to what the client saw. False, leaving nothing to apply, when the shot
+	 * breaks the weapon's refire time, bullet count or spread.
+	 */
+	bool RetraceClientShot(FGameplayAbilityTargetDataHandle& InOutTargetData) const;
+
 private:
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 };

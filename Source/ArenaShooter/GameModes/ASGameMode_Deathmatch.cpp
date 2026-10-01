@@ -16,6 +16,19 @@
 #include "Pickups/ASPickup.h"
 #include "System/ASProfiling.h"
 
+static TAutoConsoleVariable<int32> CVarWarmupOverride(TEXT("AS.Match.WarmupOverride"), -1,
+	TEXT("Length in seconds of every warmup, including the short one a second player's arrival starts. -1 uses the game mode's settings; 0 starts the match on the next timer tick."), ECVF_Cheat);
+
+namespace
+{
+	/** Configured, unless AS.Match.WarmupOverride says otherwise. */
+	int32 WarmupSeconds(int32 Configured)
+	{
+		const int32 Override = CVarWarmupOverride.GetValueOnGameThread();
+		return Override >= 0 ? Override : Configured;
+	}
+}
+
 AASGameMode_Deathmatch::AASGameMode_Deathmatch()
 {
 	PlayerStateClass = AASPlayerState::StaticClass();
@@ -61,7 +74,7 @@ void AASGameMode_Deathmatch::HandleMatchIsWaitingToStart()
 	Super::HandleMatchIsWaitingToStart();
 	if (AASGameState* GS = GetGameState<AASGameState>())
 	{
-		GS->RemainingTime = WarmupTime;
+		GS->RemainingTime = WarmupSeconds(WarmupTime);
 	}
 }
 
@@ -149,7 +162,7 @@ void AASGameMode_Deathmatch::PostLogin(APlayerController* NewPlayer)
 		AASGameState* GS = GetGameState<AASGameState>();
 		if (GS)
 		{
-			GS->RemainingTime = ShortWarmupTime;
+			GS->RemainingTime = WarmupSeconds(ShortWarmupTime);
 			GS->MulticastOnPlayerJoined();
 		}
 	}

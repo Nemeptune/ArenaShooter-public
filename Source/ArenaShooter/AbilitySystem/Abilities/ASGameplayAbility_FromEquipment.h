@@ -32,6 +32,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ArenaShooter|Weapon")
 	void NotifyWeaponFired();
 
+	/**
+	 * Server: moves where a remote client says its shot started to where the shooter could have fired from.
+	 * The claim stands within the shooter's movement slack of the eyes the server has for them, plus ExtraReach
+	 * for a muzzle offset, and falls back to those eyes if geometry lies in between. False without a shooter.
+	 */
+	static bool ClampClientShotOrigin(const AActor* Shooter, FVector& InOutOrigin, float ExtraReach = 0.f);
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ArenaShooter|Weapon|FX")
 	FGameplayTag FireCueTag;
 

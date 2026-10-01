@@ -143,15 +143,16 @@ void UASCharacterMovementComponent::AddDampedImpulse(FVector Impulse, bool bSelf
 		PctBelowDamp = FMath::Max(0.f, PctBelowDamp - PctBelowRun);
 
 		FinalImpulse *= (PctBelowRun + PctBelowDamp + FMath::Max(0.5f, 1.f - PctAboveDamp) * PctAboveDamp);
-
-		FVector FinalVelocityXY = PendingVelocity + FinalImpulse;
-		FinalVelocityXY.Z = 0.f;
-		if (FinalVelocityXY.Size() > MaxKnockbackHorizontalVelocity)
-		{
-			FinalImpulse = FinalVelocityXY.GetSafeNormal() * MaxKnockbackHorizontalVelocity - PendingVelocity;
-		}
 	}
 
+	const float SpeedCap = FMath::Max(MaxKnockbackHorizontalVelocity, CurrentXYSpeed);
+	FVector FinalVelocityXY = PendingVelocity + FinalImpulse;
+	FinalVelocityXY.Z = 0.f;
+	if (FinalVelocityXY.Size() > SpeedCap)
+	{
+		FinalImpulse = FinalVelocityXY.GetSafeNormal() * SpeedCap - PendingVelocity;
+	}
+	
 	FinalImpulse.Z = FinalImpulseZ;
 
 	// Vertical pass: self-inflicted impulses get a higher undamped ceiling, so your own rocket lifts you

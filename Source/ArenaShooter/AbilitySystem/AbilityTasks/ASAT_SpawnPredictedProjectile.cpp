@@ -4,6 +4,7 @@
 #include "ASAT_SpawnPredictedProjectile.h"
 
 #include "AbilitySystemComponent.h"
+#include "AbilitySystem/Abilities/ASGameplayAbility_ProjectileWeapon.h"
 #include "System/ASLogChannels.h"
 #include "Player/ASPlayerController.h"
 #include "AbilitySystem/ASAbilitySystemComponent.h"
@@ -246,7 +247,15 @@ void UASAT_SpawnPredictedProjectile::OnSpawnDataReplicated(const FGameplayAbilit
 			AASPlayerController* PC = Ability->GetCurrentActorInfo()->PlayerController.IsValid() ? Cast<AASPlayerController>(Ability->GetCurrentActorInfo()->PlayerController.Get()) : nullptr;
 			const float ForwardPredictionTime =	PC->GetForwardPredictionTime();
 
-			if (AASProjectile* NewProjectile = GetWorld()->SpawnActor<AASProjectile>(ProjectileClass, SpawnInfo->SpawnLocation, SpawnInfo->SpawnRotation, GenerateSpawnParamsForAuth(SpawnInfo->ProjectileId)))
+			// The client chose where its projectile starts. Keep that only within reach of where the server has the shooter,
+			// or a client could start a projectile inside its target.
+			const UASGameplayAbility_ProjectileWeapon* ProjectileAbility = Cast<UASGameplayAbility_ProjectileWeapon>(Ability);
+			FVector ServerSpawnLocation = SpawnInfo->SpawnLocation;
+			const bool bSpawnStands = UASGameplayAbility_FromEquipment::ClampClientShotOrigin(Ability->GetAvatarActorFromActorInfo(), ServerSpawnLocation,
+				ProjectileAbility ? static_cast<float>(ProjectileAbility->FireOffset.Size()) : 0.f);
+
+			AASProjectile* NewProjectile = bSpawnStands ? GetWorld()->SpawnActor<AASProjectile>(ProjectileClass, ServerSpawnLocation, SpawnInfo->SpawnRotation, GenerateSpawnParamsForAuth(SpawnInfo->ProjectileId)) : nullptr;
+			if (NewProjectile)
 			{
 				PROJECTILE_LOG(Verbose, TEXT("(%i:%i.%i) (ID: %i): Successfully spawned authoritative projectile (%s). Forwarded (%fms) for perceived ping (%fms). Latency reduction: (%fms) Client bias: (%i%%)"),
 					FDateTime::UtcNow().GetMinute(), FDateTime::UtcNow().GetSecond(), FDateTime::UtcNow().GetMillisecond(), SpawnInfo->ProjectileId, *GetNameSafe(NewProjectile), ForwardPredictionTime * 1000.0f,

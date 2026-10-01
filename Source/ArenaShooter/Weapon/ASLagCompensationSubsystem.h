@@ -79,7 +79,7 @@ struct FASTrackedCharacter
 	double ClientViewTime = 0.;
 	
 	/** The capsules as they were at Time, blended between the two frames around it. */
-	void AppendCapsulesAt(double Time, TArray<FASWorldCapsule>& OutCapsules) const;
+	ARENASHOOTER_API void AppendCapsulesAt(double Time, TArray<FASWorldCapsule>& OutCapsules) const;
 };
 
 /**
@@ -103,10 +103,11 @@ public:
 	
 	/**
 	 * Line trace against the world as it is now and every registered character as the shooter saw
-	 * it. The shooter's own character is skipped. Character hits carry the bone and the zone material.
+	 * it: at ClaimedViewTime if the shot came with one, else at their newest move's. The shooter's
+	 * own character is skipped. Character hits carry the bone and the zone material.
 	 */
-	void LineTraceRewound(TArrayView<const FASShotRay> Rays, ECollisionChannel Channel, 
-		FCollisionQueryParams Params, const AActor* Shooter, TArrayView<FHitResult> OutHits) const;
+	void LineTraceRewound(TArrayView<const FASShotRay> Rays, ECollisionChannel Channel,
+		FCollisionQueryParams Params, const AActor* Shooter, TArrayView<FHitResult> OutHits, double ClaimedViewTime = 0.) const;
 	
 	/** Client: a simulated character's movement from ServerTime just arrived. */
 	void NoteServerSnapshot(double ServerTime);
@@ -120,8 +121,11 @@ public:
 	 */
 	double GetShownServerTime() const;
 
-	/** Server time to trace this shooter's shots at: the moment their client was seeing. */
-	double GetShooterViewTime(const AActor* Shooter) const;
+	/**
+	 * Server time to trace this shooter's shots at: the moment their client was seeing, as the shot
+	 * claims it or, without a claim, as their newest move does. Clamped either way.
+	 */
+	double GetShooterViewTime(const AActor* Shooter, double ClaimedViewTime = 0.) const;
 	
 	static void TraceRays(const UWorld& World, TArrayView<const FASShotRay> Rays, ECollisionChannel Channel, const FCollisionQueryParams& Params,
 		TArrayView<const FASWorldCapsule> Capsules, TArrayView<const FASHitboxGroup> Groups, int32 MinRaysPerTask, bool bParallel,

@@ -12,6 +12,12 @@
 #include "System/ASProfiling.h"
 #include "Weapon/ASWeaponInstance.h"
 
+static TAutoConsoleVariable<float> CVarShotOriginSlack(TEXT("AS.HitValidation.OriginSlack"), 30.f,
+	TEXT("How far, in cm, a client's shot may start from where the server has the shooter's eyes, on top of OriginSlackTime of their movement."), ECVF_Cheat);
+
+static TAutoConsoleVariable<float> CVarShotOriginSlackTime(TEXT("AS.HitValidation.OriginSlackTime"), 0.1f,
+	TEXT("Seconds of the shooter's movement, at the speed the server has them, that a shot's start may be off by."), ECVF_Cheat);
+
 UASGameplayAbility_FromEquipment::UASGameplayAbility_FromEquipment()
 {
 	FGameplayTagContainer Tags = GetAssetTags();
@@ -81,6 +87,36 @@ void UASGameplayAbility_FromEquipment::NotifyWeaponFired()
 	{
 		Weapon->MarkFired();
 	}
+}
+
+bool UASGameplayAbility_FromEquipment::ClampClientShotOrigin(const AActor* Shooter, FVector& InOutOrigin, float ExtraReach)
+{
+	const UWorld* World = Shooter ? Shooter->GetWorld() : nullptr;
+	if (!World)
+	{
+		return false;
+	}
+
+	FVector EyeLocation;
+	FRotator EyeRotation;
+	Shooter->GetActorEyesViewPoint(EyeLocation, EyeRotation);
+
+	// The server has the shooter where their newest processed move left them: behind a moving client by the
+	// moves still in flight, and elsewhere for a moment after knockback it applied. Both grow with speed.
+	const float Slack = CVarShotOriginSlack.GetValueOnGameThread() + ExtraReach
+		+ static_cast<float>(Shooter->GetVelocity().Size()) * CVarShotOriginSlackTime.GetValueOnGameThread();
+	const FVector Offset = InOutOrigin - EyeLocation;
+	UE_CLOG(Offset.SizeSquared() > FMath::Square(Slack), LogAS_Weapon, Log, TEXT("%s fired from %.0f cm off its eyes on the server, %.0f allowed"),
+		*GetNameSafe(Shooter), Offset.Size(), Slack);
+	InOutOrigin = EyeLocation + Offset.GetClampedToMaxSize(Slack);
+
+	// Never from the far side of a wall.
+	const FCollisionQueryParams Params(SCENE_QUERY_STAT(ShotOrigin), false, Shooter);
+	if (World->LineTraceTestByChannel(EyeLocation, InOutOrigin, COLLISION_WEAPON, Params))
+	{
+		InOutOrigin = EyeLocation;
+	}
+	return true;
 }
 
 void UASGameplayAbility_FromEquipment::ExecuteFireCue(const FGameplayAbilityTargetDataHandle& TargetData)

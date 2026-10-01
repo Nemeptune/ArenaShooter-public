@@ -58,8 +58,8 @@ A weapon swap is instant on the owning client and still converges to the server:
 ### Weapons
 | Weapon | Model |
 |---|---|
-| Pistol, Rifle | Predicted hitscan through GAS target data |
-| Shotgun | Multi-pellet trace. All pellet hits travel in **one** gameplay cue via a custom `FASGameplayEffectContext`, and damage is coalesced per target per shot (one number, one proc, one death check) |
+| Pistol, Rifle | Predicted hitscan: the client traces for instant feedback, the server **validates and re-traces** the same rays against rewound hitboxes (see below) |
+| Shotgun | Multi-pellet hitscan, validated and re-traced the same way. All pellet hits travel in **one** gameplay cue via a custom `FASGameplayEffectContext`, and damage is coalesced per target per shot (one number, one proc, one death check) |
 | Railgun | Held-fire beam (`WaitInputRelease`): server damage ticks, **lag-compensated** (see below), plus a looping cue actor that traces locally on every client for a latency-free beam end |
 | Rocket launcher | The predicted projectile above, with radial falloff, line-of-sight checks and knockback |
 
@@ -69,16 +69,32 @@ A weapon swap is instant on the owning client and still converges to the server:
 - **Momentum:** explosions build an impulse from `FMomentumParams` (inner / outer radius falloff, self-damage scaling), damped against the current velocity.
 - **Authority:** knockback is **server-authoritative** with a forced client correction. Predicting it was designed and measured, then rejected on purpose: it turns a small constant delay into a rare false start followed by a yank.
 
+### Server-authoritative hitscan and shot validation
+`UASGameplayAbility_WeaponBase::RetraceClientShot`, `ASShotValidation`, `UASGameplayAbility_FromEquipment::ClampClientShotOrigin`
+
+The client traces its own shots so hits feel instant, but the server never applies a hit the client reports. It keeps only the rays, checks them and traces them itself:
+
+- **What the client sends:** each bullet's ray, plus the server time of the frame on the shooter's screen (`FASGameplayAbilityTargetData_ShotHit::ViewServerTime`). The hits the client found are only compared with the server's afterwards.
+- **Validation before tracing.** A shot is dropped if:
+  - it comes sooner than the weapon refires. `CanFire` is checked again for every shot, because one activation could carry any number of target-data RPCs. Remote shots get 30 ms of tolerance for network jitter.
+  - it carries more bullets than the weapon fires per shot;
+  - a bullet isn't a usable ray, or the pellets spread wider than the weapon's cone allows (plus 1° for the rounding of rays on the wire).
+
+  These checks are a pure function, `ASShotValidation::CheckBullets`, covered by unit tests (see [Automated tests](#automated-tests)).
+- **Origin clamp:** a shot may start at most 30 cm, plus 0.1 s of the shooter's current speed, from where the server has their eyes (`AS.HitValidation.OriginSlack`, `OriginSlackTime`). If a wall lies in between, it starts at the eyes. Rocket spawn locations get the same check, so a client can't start a projectile inside its target.
+- **Rewound retrace:** the server traces the rays through the lag compensation below, at the moment the shot says the shooter saw, clamped to at most 250 ms back. Damage, the fire cue and Blueprint only ever see the server's hits. Hitboxes come from the physics asset, so headshot zones still apply.
+- **Hit-registration monitoring:** every client hit that the server's trace disagrees with counts towards a `HitRegMismatches` CSV stat. A few mean latency; many mean a tuning problem.
+
 ### Lag compensation and multithreaded hit tests
 `UASLagCompensationSubsystem`, `ASHitboxMath`, `UASCharacterMovementComponent`, `AS.Stress.LagComp`
 
-The railgun is traced on the server, which sees targets about one round trip later than the shooter did. At 150 ms RTT against a strafing target, the server was 90 cm off and hit **6.4%** of the time. The fix is to rewind every other character to the moment the shooter saw on screen, then trace.
+Every hitscan shot and the railgun beam are traced on the server, which sees targets about one round trip later than the shooter did. At 150 ms RTT against a strafing target, the server was 90 cm off and hit **6.4%** of the time. The fix is to rewind every other character to the moment the shooter saw on screen, then trace.
 
 **Why multithreading.** In a 1v1 it isn't needed. A hit test costs about 3 µs per ray and real play produces 1–3 rays per call. But lag compensation is the part of a shooter server that grows with player count: every shot tests every character. So the hit test was written from the start as a pure function over plain data, made parallel, and **measured**, to find where threads pay off and where they don't.
 
 **How it works**
 - **History:** at the end of every server frame, each character's hit capsules (from its physics asset, with the zone materials used for headshots) are saved into a ~350 ms ring buffer. It's plain data: no UObjects, safe to read from worker threads.
-- **Exact rewind time:** the server stamps every character update with its world time. The client stamps every movement packet with the server time of the frame on its screen. The aim travels in the same packet, so the server rewinds to exactly the moment the shooter saw, with the aim that went with it. There's no ping estimate to drift or spike.
+- **Exact rewind time:** the server stamps every character update with its world time. The client stamps every movement packet with the server time of the frame on its screen. The aim travels in the same packet, so the server rewinds to exactly the moment the shooter saw, with the aim that went with it. There's no ping estimate to drift or spike. Hitscan shots carry the same timestamp in their own target data, because a shot reaches the server before the movement packet of its frame.
 - **Hit test in three phases:**
   1. **Game thread:** snapshot every character's capsules at the rewound time, interpolated between the two frames around it.
   2. **`ParallelFor` over the rays:** each ray does a world trace and then the capsule tests, and writes only its own result slot, so nothing is locked. World traces are read-only scene queries, which the engine's own async traces also run on worker threads.
@@ -158,6 +174,31 @@ What the numbers say:
 - **Loading screen:** held during travel by the CommonLoadingScreen plugin.
 - **Preload:** `UASPreloadSubsystem` warms gameplay cues, Niagara PSOs and pooled MetaSound operators, and keeps the loading screen up until PSO precaching finishes. This avoids first-shot hitches.
 
+### Automated tests
+`Plugins/ArenaShooterTests`
+
+65 automation tests on Epic's **CQTest** framework, in an editor-only plugin so nothing ships with the game. They run at four levels, from pure maths up to a live server and client:
+
+| Level | Tests | What they check |
+|---|---|---|
+| **Pure logic** | 33 | Ray-vs-capsule hitbox maths, the lag-compensation history (ring-buffer wrap, interpolation), server-side shot validation |
+| **Throwaway world** | 26 | Damage pipeline (shield before health, buff multiplier and resistance clamps, reflect loop guard), weapon refire limits, knockback damping and its speed cap |
+| **Real map and Blueprints** | 3 | The game mode spawns the character with its loadout; firing spends ammo through the real fire ability; lethal damage → death ability → respawn |
+| **Listen server + client, 100 ms RTT** | 3 | A predicted weapon switch converges on the server; a shot spends ammo exactly once on both machines; a client's hit is rewound and applied by the server |
+
+Plus the engine's `Project.Maps.PIE` smoke test, which plays both maps and fails on any error logged.
+
+Tests worth a look:
+- **The broad phase can't change results:** 2,000 seeded random rays go through the bounding-sphere broad phase and through a brute-force loop over every capsule. Both must pick the same capsule at the same distance.
+- **Anti-cheat never rejects honest players:** 1,000 shotgun blasts, generated the way the client generates them, must all pass the server's spread and bullet-count checks.
+- **Ammo is never counted twice:** with 50 ms of lag each way, the client's predicted ammo is sampled every frame until the server's value arrives. It must never dip below one shot.
+- **Lag compensation end to end:** the client aims at the host and fires. The server must rewind, retrace the client's ray and damage the host.
+
+How it's built:
+- **Testable by design:** server-side shot validation is a pure function (`ASShotValidation::CheckBullets`), so the anti-cheat is tested without running an ability.
+- **Own network session:** CQTest's network component always plays an empty map, so the tests use their own, modelled on Lyra's. It loads the real test map, starts a listen server and a client in PIE, and adds packet lag through `SetPacketSimulationSettings`.
+- **No test hooks in game code:** tests reach protected state through small test-only subclasses (a movement component that exposes its pending impulse, an actor with an ability system and the combat attributes). The one game-side addition is a cheat console variable, `AS.Match.WarmupOverride`, that skips the warmup.
+
 ---
 
 ## Built with
@@ -188,7 +229,7 @@ Source/ArenaShooter/
     GameplayCues/    weapon fire, beam and buff aura cue actors
   Character/       character, movement component (knockback, predicted dash and bunny hop), anim instance
   Inventory/       inventory (predicted slot switching), equipment, inventory messages
-  Weapon/          weapon definition, instance, cosmetic actor, projectile, lag compensation, hitbox maths
+  Weapon/          weapon definition, instance, cosmetic actor, projectile, lag compensation, hitbox maths, shot validation
   Pickups/         pickup base, effect / ammo / buff pickups
   GameModes/       game mode, duel mode, game state
   Player/          player controller, player state, local player
@@ -200,11 +241,29 @@ Source/ArenaShooter/
   Online/          Steam avatars
   Input/           input config and component
   System/          native gameplay tags, log channels, preload subsystem, profiling markers, test and stress console commands
+Plugins/ArenaShooterTests/
+  Weapon/          hitbox maths, lag-compensation history, shot validation, refire
+  AbilitySystem/   damage pipeline
+  Character/       knockback
+  Map/             spawn, fire, death and respawn on the test map
+  Network/         listen server + client: weapon switch, ammo prediction, rewound hits
+  Helpers/         test actors, effects, player accessors, network session
 ```
 
 ### Testing multiplayer
 - **LAN (one machine):** set `DefaultPlatformService=Null` in `Config/DefaultEngine.ini` and start two standalone instances (`UnrealEditor.exe ArenaShooter.uproject -game -windowed`). Host from one, join from the other.
 - **Steam (two machines):** set `DefaultPlatformService=Steam`, package, and run on two PCs with different Steam accounts. Uses the Spacewar test AppId (480).
+
+### Running the automated tests
+- **In the editor:** Tools → Session Frontend → **Automation** tab, search `ArenaShooter`, tick it, **Start Tests**. The map and network tests load `L_Test` into the editor, so save your open level first.
+- **Command line:**
+  ```
+  UnrealEditor-Cmd.exe ArenaShooter.uproject -ExecCmds="Automation RunTests ArenaShooter;Quit" -unattended -nullrhi -nosplash -nosound -log -ReportExportPath="Saved/Automation/Reports"
+  ```
+  Then open `Saved/Automation/Reports/index.html`.
+- **Map smoke test:** run `Project.Maps.PIE` with `-dpcvars=AS.Match.WarmupOverride=0`, or the match warmup makes it wait minutes.
+
+The pure-logic and world tests run on any clone. The map and network tests play the real character Blueprint, which needs the character mesh and its physics asset for hitboxes. This repo has no art, so expect some of them to fail here.
 
 ## What's in this repo
 - **Included:** every content asset the game actually uses that isn't raw art: Blueprints, gameplay abilities and effects, anim blueprints and linked layers, skeletons and physics assets, widgets, materials and material functions, Niagara systems / emitters / modules and the impact data channel, MetaSounds and the audio mix / submix setup, input actions, weapon / buff / UI data assets, and both maps.

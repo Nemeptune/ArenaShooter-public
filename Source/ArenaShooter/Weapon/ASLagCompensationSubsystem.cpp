@@ -229,7 +229,7 @@ static void DrawCapsule(const UWorld* World, const FASWorldCapsule& Capsule, con
 }
 #endif
 
-void UASLagCompensationSubsystem::LineTraceRewound(TArrayView<const FASShotRay> Rays, ECollisionChannel Channel, FCollisionQueryParams Params, const AActor* Shooter, TArrayView<FHitResult> OutHits) const
+void UASLagCompensationSubsystem::LineTraceRewound(TArrayView<const FASShotRay> Rays, ECollisionChannel Channel, FCollisionQueryParams Params, const AActor* Shooter, TArrayView<FHitResult> OutHits, double ClaimedViewTime) const
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(UASLagCompensationSubsystem::LineTraceRewound);
 	check(Rays.Num() == OutHits.Num());
@@ -250,7 +250,7 @@ void UASLagCompensationSubsystem::LineTraceRewound(TArrayView<const FASShotRay> 
 	
 	if (CVarLagCompEnabled.GetValueOnGameThread())
 	{
-		const double Time = GetShooterViewTime(Shooter);
+		const double Time = GetShooterViewTime(Shooter, ClaimedViewTime);
 		RewindSeconds = World->GetTimeSeconds() - Time;
 		CSV_CUSTOM_STAT(ArenaShooter, LagCompRewindMs, static_cast<float>(RewindSeconds * 1000.), ECsvCustomStatOp::Max);
 
@@ -392,7 +392,7 @@ double UASLagCompensationSubsystem::GetShownServerTime() const
 	return ShownServerTime;
 }
 
-double UASLagCompensationSubsystem::GetShooterViewTime(const AActor* Shooter) const
+double UASLagCompensationSubsystem::GetShooterViewTime(const AActor* Shooter, double ClaimedViewTime) const
 {
 	const double Now = GetWorld()->GetTimeSeconds();
 	const APawn* Pawn = Cast<APawn>(Shooter);
@@ -401,16 +401,23 @@ double UASLagCompensationSubsystem::GetShooterViewTime(const AActor* Shooter) co
 		return Now; // a listen-server host sees characters where the server has them
 	}
 
-	const FASTrackedCharacter* Tracked = TrackedCharacters.FindByPredicate([Pawn](const FASTrackedCharacter& Entry)
+	double ViewTime = ClaimedViewTime;
+	if (ViewTime <= 0.)
 	{
-		return Entry.Character.Get() == Pawn;
-	});
-	if (!Tracked || Tracked->ClientViewTime <= 0.)
-	{
-		return Now; // no stamped move yet
+		// The shot didn't say. The newest move did, but a shot reaches the server before the move of its
+		// own frame, so this moment can be a frame or two older than the one the shooter aimed at.
+		const FASTrackedCharacter* Tracked = TrackedCharacters.FindByPredicate([Pawn](const FASTrackedCharacter& Entry)
+		{
+			return Entry.Character.Get() == Pawn;
+		});
+		if (!Tracked || Tracked->ClientViewTime <= 0.)
+		{
+			return Now; // no stamped move yet
+		}
+		ViewTime = Tracked->ClientViewTime;
 	}
 
 	// Clamped: a client can't pull the rewind further back than MaxRewindMs, or into the future.
-	const double ViewTime = Tracked->ClientViewTime - CVarLagCompExtraRewindMs.GetValueOnGameThread() * 0.001;
+	ViewTime -= CVarLagCompExtraRewindMs.GetValueOnGameThread() * 0.001;
 	return FMath::Clamp(ViewTime, Now - CVarLagCompMaxRewindMs.GetValueOnGameThread() * 0.001, Now);
 }
